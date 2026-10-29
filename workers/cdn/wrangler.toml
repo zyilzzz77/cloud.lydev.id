@@ -1,0 +1,21 @@
+name = "lydev-cdn"
+main = "src/index.js"
+compatibility_date = "2026-10-28"
+account_id = "35e5e2aeda35512c4edfb8eced06db50"
+workers_dev = false
+
+routes = [{ pattern = "cdn.lydev.id/*", zone_name = "lydev.id" }]
+
+[vars]
+APP_URL = "https://cloud.lydev.id"
+
+# Signs short-lived private links. Must match the app environment:
+#   wrangler secret put CDN_SIGNING_SECRET --config workers/cdn/wrangler.toml
+
+[[kv_namespaces]]
+binding = "LINKS"
+id = "63411f5966ff4ba99f024e4508e2895f"
+
+[[r2_buckets]]
+binding = "CDN"
+bucket_name = "lydev-cdn"

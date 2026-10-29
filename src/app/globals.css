@@ -1,0 +1,182 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: 210 40% 98%;
+  --foreground: 222 47% 11%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+
+  --primary: 217 91% 46%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222 47% 11%;
+
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 25% 38%;
+
+  --accent: 210 40% 94%;
+  --accent-foreground: 222 47% 11%;
+
+  --destructive: 0 72% 48%;
+  --destructive-foreground: 0 0% 100%;
+
+  --success: 152 62% 29%;
+  --warning: 32 90% 32%;
+  /* Text-safe red; `--destructive` is a button surface, too dark to read on a card. */
+  --danger: 0 70% 40%;
+
+  --border: 214 32% 90%;
+  --input: 214 32% 90%;
+  --ring: 217 91% 46%;
+  --radius: 0.5rem;
+
+  color-scheme: light;
+}
+
+.dark {
+  --background: 222 47% 4%;
+  --foreground: 210 40% 98%;
+
+  --card: 222 47% 7%;
+  --card-foreground: 210 40% 98%;
+
+  --popover: 222 47% 6%;
+  --popover-foreground: 210 40% 98%;
+
+  --primary: 217 91% 60%;
+  --primary-foreground: 222 47% 4%;
+
+  --secondary: 217 33% 14%;
+  --secondary-foreground: 210 40% 98%;
+
+  --muted: 217 33% 12%;
+  --muted-foreground: 215 20% 65%;
+
+  --accent: 217 33% 16%;
+  --accent-foreground: 210 40% 98%;
+
+  --destructive: 0 63% 31%;
+  --destructive-foreground: 210 40% 98%;
+
+  --success: 152 58% 64%;
+  --warning: 38 92% 66%;
+  --danger: 0 85% 74%;
+
+  --border: 217 33% 15%;
+  --input: 217 33% 15%;
+  --ring: 217 91% 60%;
+
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-success: hsl(var(--success));
+  --color-warning: hsl(var(--warning));
+  --color-danger: hsl(var(--danger));
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  }
+
+  ::selection {
+    background-color: hsl(var(--primary) / 0.3);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    body {
+      transition:
+        background-color 160ms ease,
+        color 160ms ease;
+    }
+  }
+}
+
+/* Sonner ships its own light/dark presets. The Toaster keeps theme="dark" so the
+   stack never remounts (remounting drops visible toasts); this palette makes the
+   toasts follow the app tokens in both modes instead. */
+html [data-sonner-toaster][data-sonner-theme] {
+  --normal-bg: hsl(var(--popover));
+  --normal-bg-hover: hsl(var(--accent));
+  --normal-border: hsl(var(--border));
+  --normal-border-hover: hsl(var(--border));
+  --normal-text: hsl(var(--popover-foreground));
+
+  --success-bg: hsl(142 71% 45% / 0.12);
+  --success-border: hsl(142 71% 45% / 0.35);
+  --success-text: hsl(142 65% 26%);
+
+  --info-bg: hsl(var(--primary) / 0.12);
+  --info-border: hsl(var(--primary) / 0.35);
+  --info-text: hsl(217 85% 38%);
+
+  --warning-bg: hsl(38 92% 50% / 0.14);
+  --warning-border: hsl(38 92% 50% / 0.38);
+  --warning-text: hsl(28 85% 30%);
+
+  --error-bg: hsl(0 72% 51% / 0.12);
+  --error-border: hsl(0 72% 51% / 0.35);
+  --error-text: hsl(0 70% 38%);
+}
+
+.dark [data-sonner-toaster][data-sonner-theme] {
+  --success-text: hsl(150 80% 70%);
+  --info-text: hsl(213 94% 74%);
+  --warning-text: hsl(43 96% 70%);
+  --error-text: hsl(0 92% 78%);
+}
+
+html [data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-description] {
+  color: inherit;
+  opacity: 0.82;
+}

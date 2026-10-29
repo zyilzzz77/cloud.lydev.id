@@ -1,0 +1,1 @@
+ALTER TABLE "dl_files" ADD COLUMN "password_hash" text;

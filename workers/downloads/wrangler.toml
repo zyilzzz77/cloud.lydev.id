@@ -1,0 +1,21 @@
+name = "lydev-downloads"
+main = "src/index.js"
+compatibility_date = "2026-10-28"
+account_id = "35e5e2aeda35512c4edfb8eced06db50"
+workers_dev = false
+
+routes = [{ pattern = "dl.lydev.id/*", zone_name = "lydev.id" }]
+
+[vars]
+APP_URL = "https://cloud.lydev.id"
+
+# View beacons are only sent when this secret exists:
+#   wrangler secret put EDGE_EVENT_SECRET --config workers/downloads/wrangler.toml
+
+[[kv_namespaces]]
+binding = "LINKS"
+id = "63411f5966ff4ba99f024e4508e2895f"
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "lydev-files"

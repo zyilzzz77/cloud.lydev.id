@@ -1,0 +1,2 @@
+ALTER TABLE "users" ADD COLUMN "bandwidth_used_bytes" bigint DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN "bandwidth_period_start" timestamp with time zone DEFAULT now() NOT NULL;

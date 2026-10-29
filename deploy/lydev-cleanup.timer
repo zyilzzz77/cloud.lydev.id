@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Lydev Cloud cleanup every hour
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

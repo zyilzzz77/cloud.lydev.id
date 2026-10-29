@@ -1,0 +1,12 @@
+[Unit]
+Description=Lydev Cloud expired file cleanup
+After=network.target postgresql.service
+
+[Service]
+Type=oneshot
+User=lydev
+Group=lydev
+WorkingDirectory=/srv/lydev-cloud
+EnvironmentFile=/srv/lydev-cloud/.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/pnpm worker:cleanup

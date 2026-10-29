@@ -1,0 +1,24 @@
+[Unit]
+Description=Lydev Cloud web application
+After=network.target postgresql.service redis-server.service
+Wants=network.target
+
+[Service]
+Type=simple
+User=lydev
+Group=lydev
+WorkingDirectory=/srv/lydev-cloud
+EnvironmentFile=/srv/lydev-cloud/.env
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=127.0.0.1
+ExecStart=/usr/bin/node .next/standalone/server.js
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGTERM
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

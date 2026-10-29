@@ -1,0 +1,14 @@
+name = "lydev-short-links"
+main = "src/index.js"
+compatibility_date = "2026-10-28"
+account_id = "35e5e2aeda35512c4edfb8eced06db50"
+workers_dev = false
+
+routes = [{ pattern = "uri.lydev.id/*", zone_name = "lydev.id" }]
+
+[vars]
+APP_URL = "https://cloud.lydev.id"
+
+[[kv_namespaces]]
+binding = "LINKS"
+id = "63411f5966ff4ba99f024e4508e2895f"

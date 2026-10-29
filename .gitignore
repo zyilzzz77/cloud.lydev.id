@@ -1,0 +1,22 @@
+node_modules/
+.next/
+out/
+build/
+coverage/
+.env
+.env.local
+.env.*.local
+.env.cloudflare
+.pgdata/
+*.log
+.DS_Store
+Thumbs.db
+playwright-report/
+test-results/
+artifacts/
+.uploads/
+
+# local agent tooling
+.codebuddy/
+.commandcode/
+*.tsbuildinfo

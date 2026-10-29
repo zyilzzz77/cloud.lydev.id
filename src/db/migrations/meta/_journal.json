@@ -1,0 +1,90 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1793112314131,
+      "tag": "0000_woozy_sentry",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793149227634,
+      "tag": "0001_flimsy_clint_barton",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793180016639,
+      "tag": "0002_jazzy_titania",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793181302365,
+      "tag": "0003_confused_pride",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793187696967,
+      "tag": "0004_service_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793190598991,
+      "tag": "0005_plans",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793191394448,
+      "tag": "0006_transfer_metering",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793196670579,
+      "tag": "0007_view_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793240101521,
+      "tag": "0008_remarkable_thunderbolts",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793242064568,
+      "tag": "0009_simple_khan",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793244133781,
+      "tag": "0010_reflective_karma",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793247201041,
+      "tag": "0011_wakeful_ego",
+      "breakpoints": true
+    }
+  ]
+}

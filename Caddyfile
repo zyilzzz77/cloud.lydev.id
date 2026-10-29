@@ -1,0 +1,35 @@
+{
+    servers {
+        trusted_proxies static private_ranges
+        client_ip_headers CF-Connecting-IP
+    }
+}
+
+cloud.lydev.id, uri.lydev.id, dl.lydev.id {
+    encode zstd gzip
+
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        -Server
+    }
+
+    @api path /api/*
+    request_body @api {
+        max_size 2MB
+    }
+
+    reverse_proxy 127.0.0.1:3000 {
+        # Replace, never append: a client-supplied X-Forwarded-For must not
+        # reach the app, where it would key the rate limiters.
+        header_up X-Real-IP {client_ip}
+        header_up X-Forwarded-For {client_ip}
+    }
+
+    log {
+        output file /var/log/caddy/lydev.log
+    }
+}
