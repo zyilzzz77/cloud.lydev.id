@@ -88,6 +88,35 @@ R2_CDN_DOMAIN=cdn.lydev.id
 `CLOUDFLARE_API_TOKEN` with Zone Cache Purge is used to invalidate `cdn.lydev.id` when an asset is
 deleted. Tencent COS and the `.uploads/` filesystem remain available as fallbacks.
 
+## Plans and bandwidth top-ups
+
+Transfer is metered per UTC month and resets automatically; there is no manual reset. When a plan
+runs out mid-month the account can either upgrade or buy a one-month bandwidth top-up.
+
+| Plan | Storage | Transfer / month | Price |
+| --- | --- | --- | --- |
+| Free | 5 GB | 10 GB | Rp 0 |
+| Starter | 25 GB | 100 GB | Rp 39.000 |
+| Pro | 100 GB | 500 GB | Rp 99.000 |
+
+| Top-up | Price | Per GB |
+| --- | --- | --- |
+| 10 GB | Rp 7.000 | Rp 700 |
+| 50 GB | Rp 29.000 | Rp 580 |
+| 100 GB | Rp 49.000 | Rp 490 |
+| 500 GB | Rp 199.000 | Rp 398 |
+
+Top-ups are deliberately worse value than a plan upgrade: 100 GB of top-up costs more than Starter,
+which also adds storage and renews every month. They exist for a one-off spike, not as a substitute.
+
+A top-up is recorded as a `transfer_topups` row with status `pending`; approving it adds the bytes to
+`users.transfer_bonus_bytes` for the current UTC month only. Approve from the CLI:
+
+```powershell
+pnpm topup:approve lydev
+pnpm topup:approve lydev bw-50
+```
+
 ## Malware scanning
 
 Download uploads accept every format, including `.exe`, `.msi`, and installers. Nothing is trusted

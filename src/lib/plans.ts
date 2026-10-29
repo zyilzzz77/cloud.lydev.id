@@ -57,18 +57,18 @@ export const PLANS: Record<PlanId, Plan> = {
     id: "starter",
     name: "Starter",
     tagline: "For projects picking up traffic.",
-    priceIdr: 29_000,
+    priceIdr: 39_000,
     limits: {
       storageBytes: 25 * GB,
       maxBuckets: 20,
       maxApiKeys: 10,
       urlsPerHour: 150,
       uploadsPerHour: 240,
-      transferBytesPerMonth: null,
+      transferBytesPerMonth: 100 * GB,
     },
     features: [
       "25 GB storage",
-      "Unlimited transfer",
+      "100 GB transfer per month",
       "CDN, short links, and file sharing",
       "20 buckets and 10 API keys",
       "150 short links per hour",
@@ -86,11 +86,11 @@ export const PLANS: Record<PlanId, Plan> = {
       maxApiKeys: 50,
       urlsPerHour: 400,
       uploadsPerHour: 600,
-      transferBytesPerMonth: null,
+      transferBytesPerMonth: 500 * GB,
     },
     features: [
       "100 GB storage",
-      "Unlimited transfer",
+      "500 GB transfer per month",
       "CDN, short links, and file sharing",
       "100 buckets and 50 API keys",
       "400 short links per hour",
@@ -100,6 +100,34 @@ export const PLANS: Record<PlanId, Plan> = {
 };
 
 export const PLAN_ORDER: readonly PlanId[] = ["free", "starter", "pro"];
+
+export interface TransferTopUp {
+  id: string;
+  label: string;
+  bytes: number;
+  priceIdr: number;
+}
+
+/**
+ * Bandwidth sold outside the monthly plans. Priced per GB above what a plan
+ * charges, so a heavy month is always cheaper as a plan upgrade: 100 GB of
+ * top-up costs more than Starter, which also adds storage and resets monthly.
+ * A top-up only lasts for the month it was bought in.
+ */
+export const TRANSFER_TOPUPS: readonly TransferTopUp[] = [
+  { id: "bw-10", label: "10 GB", bytes: 10 * GB, priceIdr: 7_000 },
+  { id: "bw-50", label: "50 GB", bytes: 50 * GB, priceIdr: 29_000 },
+  { id: "bw-100", label: "100 GB", bytes: 100 * GB, priceIdr: 49_000 },
+  { id: "bw-500", label: "500 GB", bytes: 500 * GB, priceIdr: 199_000 },
+];
+
+export function findTransferTopUp(id: string): TransferTopUp | null {
+  return TRANSFER_TOPUPS.find((topUp) => topUp.id === id) ?? null;
+}
+
+export function transferTopUpPerGb(topUp: TransferTopUp): number {
+  return Math.round(topUp.priceIdr / (topUp.bytes / GB));
+}
 
 export const PAID_PLAN_IDS = ["starter", "pro"] as const;
 

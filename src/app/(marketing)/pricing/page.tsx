@@ -8,7 +8,7 @@ import { PLANS, PLAN_ORDER } from "@/lib/plans";
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: "Two paid plans with unlimited bandwidth, or start free.",
+  description: "Storage and monthly transfer plans, with bandwidth top-ups when a month runs hot.",
 };
 
 export default async function PricingPage() {
@@ -78,8 +78,12 @@ export default async function PricingPage() {
           — you will see the request status on your plan page.
         </p>
         <p>
-          Free accounts include 10 GB of download transfer each month. Starter and Pro have no
-          transfer cap.
+          Every plan includes a monthly transfer allowance: 10 GB on Free, 100 GB on Starter, and
+          500 GB on Pro. Transfer resets on the first of each month.
+        </p>
+        <p>
+          Need more in a single month? Bandwidth top-ups start at Rp 7.000 and expire with the
+          billing month. For steady traffic, a plan upgrade is cheaper per GB.
         </p>
       </div>
     </div>

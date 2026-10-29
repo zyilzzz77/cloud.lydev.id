@@ -9,4 +9,5 @@ export * from "./url-click-events.schema";
 export * from "./dl-files.schema";
 export * from "./service-status.schema";
 export * from "./plan-upgrade-requests.schema";
+export * from "./transfer-topups.schema";
 export * from "./dl-view-events.schema";

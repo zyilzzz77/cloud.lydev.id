@@ -16,6 +16,8 @@ export function transferFor(user: UserRow, now = new Date()): TransferUsage {
     user.bandwidthUsedBytes,
     user.bandwidthPeriodStart,
     now,
+    user.transferBonusBytes,
+    user.transferBonusPeriodStart,
   );
 }
 

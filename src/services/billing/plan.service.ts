@@ -1,14 +1,23 @@
 import "server-only";
 import type { UserRow } from "@/db/schema";
 import { AppError } from "@/lib/errors";
-import { isPaidPlanId, type PlanId } from "@/lib/plans";
+import { findTransferTopUp, isPaidPlanId, type PlanId } from "@/lib/plans";
 import { transferFor } from "@/services/storage/transfer.service";
 import { listApiKeys } from "@/repositories/api-key.repository";
 import { listCdnBuckets } from "@/repositories/cdn-bucket.repository";
 import { createPlanRequest, findPendingPlanRequest } from "@/repositories/plan-request.repository";
+import { findPendingTransferTopUp } from "@/repositories/transfer-topup.repository";
 
 export interface PendingPlanRequest {
   plan: PlanId;
+  createdAt: string;
+}
+
+export interface PendingTopUp {
+  topUpId: string;
+  label: string;
+  bytes: number;
+  priceIdr: number;
   createdAt: string;
 }
 
@@ -20,14 +29,18 @@ export interface PlanOverview {
   activeApiKeyCount: number;
   transferUsedBytes: number;
   transferLimitBytes: number | null;
+  /** Bandwidth from approved top-ups for the current month. */
+  transferBonusBytes: number;
   pendingRequest: PendingPlanRequest | null;
+  pendingTopUp: PendingTopUp | null;
 }
 
 export async function getPlanOverview(user: UserRow): Promise<PlanOverview> {
-  const [buckets, keys, pending] = await Promise.all([
+  const [buckets, keys, pending, pendingTopUp] = await Promise.all([
     listCdnBuckets(user.id),
     listApiKeys(user.id),
     findPendingPlanRequest(user.id),
+    findPendingTransferTopUp(user.id),
   ]);
 
   const transfer = transferFor(user);
@@ -40,7 +53,17 @@ export async function getPlanOverview(user: UserRow): Promise<PlanOverview> {
     activeApiKeyCount: keys.filter((key) => !key.revokedAt).length,
     transferUsedBytes: transfer.usedBytes,
     transferLimitBytes: transfer.limitBytes,
+    transferBonusBytes: transfer.bonusBytes,
     pendingRequest: pending ? { plan: pending.plan, createdAt: pending.createdAt.toISOString() } : null,
+    pendingTopUp: pendingTopUp
+      ? {
+          topUpId: pendingTopUp.topUpId,
+          label: findTransferTopUp(pendingTopUp.topUpId)?.label ?? pendingTopUp.topUpId,
+          bytes: pendingTopUp.bytes,
+          priceIdr: pendingTopUp.priceIdr,
+          createdAt: pendingTopUp.createdAt.toISOString(),
+        }
+      : null,
   };
 }
 

@@ -16,6 +16,11 @@ export const users = pgTable("users", {
   bandwidthPeriodStart: timestamp("bandwidth_period_start", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  /** Bandwidth bought on top of the plan. Only valid for the period below. */
+  transferBonusBytes: bigint("transfer_bonus_bytes", { mode: "number" }).notNull().default(0),
+  transferBonusPeriodStart: timestamp("transfer_bonus_period_start", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
   sessionVersion: integer("session_version").notNull().default(0),
   /** Null until the signup code is confirmed. */
   emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),

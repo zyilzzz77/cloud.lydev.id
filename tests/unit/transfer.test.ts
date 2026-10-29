@@ -33,6 +33,34 @@ describe("transfer window", () => {
     expect(usage.usedBytes).toBe(4 * GB);
   });
 
+  it("adds top-up bytes to the cap for the month they were bought in", () => {
+    const usage = transferUsage(
+      PLANS.free,
+      8 * GB,
+      new Date("2026-10-01T00:00:00Z"),
+      new Date("2026-10-20T00:00:00Z"),
+      50 * GB,
+      new Date("2026-10-01T00:00:00Z"),
+    );
+
+    expect(usage.bonusBytes).toBe(50 * GB);
+    expect(usage.limitBytes).toBe(60 * GB);
+  });
+
+  it("drops top-up bytes once the month rolls over", () => {
+    const usage = transferUsage(
+      PLANS.free,
+      0,
+      new Date("2026-11-01T00:00:00Z"),
+      new Date("2026-11-02T00:00:00Z"),
+      50 * GB,
+      new Date("2026-10-01T00:00:00Z"),
+    );
+
+    expect(usage.bonusBytes).toBe(0);
+    expect(usage.limitBytes).toBe(10 * GB);
+  });
+
   it("blocks only when the request would cross the cap", () => {
     expect(exceedsTransfer(10 * GB, 9 * GB, 2 * GB)).toBe(true);
     expect(exceedsTransfer(10 * GB, 9 * GB, 1 * GB)).toBe(false);
