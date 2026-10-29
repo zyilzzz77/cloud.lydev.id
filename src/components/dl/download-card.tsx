@@ -1,30 +1,33 @@
 import {
   Download,
+  File,
+  FileArchive,
+  FileAudio,
+  FileImage,
   FileText,
-  TriangleAlert,
-  XCircle,
+  FileVideo,
 } from "lucide-react";
 import { CopyFileIdButton, CopyLinkButton } from "@/components/dl/copy-actions";
 import { formatBytes, formatDate, formatExpiryRelative } from "@/lib/utils";
 import type { DlFileDto } from "@/types/dl.types";
 
 const MIME_LABELS: Record<string, string> = {
-  "application/pdf": "PDF Document",
-  "application/zip": "ZIP Archive",
-  "application/x-zip-compressed": "ZIP Archive",
-  "application/json": "JSON File",
-  "application/rtf": "Rich Text",
-  "text/plain": "Text File",
-  "text/csv": "CSV File",
-  "text/html": "HTML File",
+  "application/pdf": "PDF document",
+  "application/zip": "ZIP archive",
+  "application/x-zip-compressed": "ZIP archive",
+  "application/json": "JSON file",
+  "application/rtf": "Rich text",
+  "text/plain": "Text file",
+  "text/csv": "CSV file",
+  "text/html": "HTML file",
   "text/markdown": "Markdown",
-  "image/png": "PNG Image",
-  "image/jpeg": "JPEG Image",
-  "image/webp": "WebP Image",
-  "image/gif": "GIF Image",
-  "image/svg+xml": "SVG Image",
-  "video/mp4": "MP4 Video",
-  "audio/mpeg": "MP3 Audio",
+  "image/png": "PNG image",
+  "image/jpeg": "JPEG image",
+  "image/webp": "WebP image",
+  "image/gif": "GIF image",
+  "image/svg+xml": "SVG image",
+  "video/mp4": "MP4 video",
+  "audio/mpeg": "MP3 audio",
 };
 
 function fileTypeLabel(name: string, mimeType: string): string {
@@ -36,64 +39,151 @@ function fileTypeLabel(name: string, mimeType: string): string {
   }
 
   if (base.startsWith("image/")) {
-    return `${base.slice(6).toUpperCase()} Image`;
+    return `${base.slice(6).toUpperCase()} image`;
   }
 
   if (base.startsWith("video/")) {
-    return `${base.slice(6).toUpperCase()} Video`;
+    return `${base.slice(6).toUpperCase()} video`;
   }
 
   if (base.startsWith("audio/")) {
-    return `${base.slice(6).toUpperCase()} Audio`;
+    return `${base.slice(6).toUpperCase()} audio`;
   }
 
   const extension = name.split(".").pop();
 
-  return extension && extension !== name ? `${extension.toUpperCase()} File` : "File";
+  return extension && extension !== name ? `${extension.toUpperCase()} file` : "File";
 }
 
-const CARD =
-  "w-full rounded-lg border border-white/[0.07] bg-[#121214] p-5 shadow-[0_1px_0_0_rgba(255,255,255,0.03)_inset,0_24px_48px_-24px_rgba(0,0,0,0.9)]";
-const ICON_BOX =
-  "flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-white/[0.06] bg-zinc-800/60";
-const ROW = "flex items-center justify-between gap-4";
+function FileTypeIcon({ mimeType, className }: { mimeType: string; className?: string }) {
+  const base = (mimeType || "").toLowerCase();
 
-function CardHeader({
-  title,
-  meta,
-  tone = "neutral",
-  icon,
-}: {
-  title: string;
-  meta: string;
-  tone?: "neutral" | "muted" | "warn";
-  icon: "file" | "expired" | "missing";
-}) {
-  const Icon = icon === "file" ? FileText : icon === "expired" ? XCircle : TriangleAlert;
+  if (base.startsWith("image/")) {
+    return <FileImage className={className} aria-hidden="true" />;
+  }
+
+  if (base.startsWith("video/")) {
+    return <FileVideo className={className} aria-hidden="true" />;
+  }
+
+  if (base.startsWith("audio/")) {
+    return <FileAudio className={className} aria-hidden="true" />;
+  }
+
+  if (base.includes("zip") || base.includes("compressed") || base.includes("tar")) {
+    return <FileArchive className={className} aria-hidden="true" />;
+  }
+
+  if (base.startsWith("text/") || base.includes("pdf") || base.includes("json")) {
+    return <FileText className={className} aria-hidden="true" />;
+  }
+
+  return <File className={className} aria-hidden="true" />;
+}
+
+const EYEBROW = "font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground";
+
+function scanLabel(scan: DlFileDto["scan"]): string {
+  switch (scan.status) {
+    case "clean":
+      return "No threats found";
+    case "suspicious":
+      return "Suspicious content";
+    case "malicious":
+      return "Malware detected";
+    default:
+      return "Not scanned";
+  }
+}
+
+/**
+ * Executables and flagged files get a warning above the button. A malicious
+ * verdict removes the button entirely: the file never had a download link.
+ */
+function SafetyNotice({ file }: { file: DlFileDto }) {
+  if (file.scan.status === "malicious") {
+    return (
+      <div className="mt-4 border border-border bg-background p-3">
+        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-foreground">
+          Blocked by the scanner
+        </p>
+        <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+          {file.scan.detail ?? "This file is flagged as malware."} Ask the owner to upload a clean
+          copy.
+        </p>
+      </div>
+    );
+  }
+
+  if (file.scan.status === "suspicious" || file.risky) {
+    return (
+      <div className="mt-4 border border-border bg-background p-3">
+        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-foreground">
+          {file.risky ? "Executable file" : "Check before opening"}
+        </p>
+        <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+          {file.scan.detail ??
+            "This file can run code on your device. Only open it if you trust the sender."}
+        </p>
+        {file.scan.status === "unscanned" ? (
+          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+            No antivirus engine checked this file.
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  return null;
+}
+
+/** Left column: what the file is and the facts about it, no actions. */
+export function FileSummary({ file }: { file: DlFileDto }) {
+  const typeLabel = fileTypeLabel(file.originalName, file.mimeType);
+
+  const stats: { label: string; value: string; copy?: boolean }[] = [
+    { label: "Size", value: formatBytes(file.sizeBytes) },
+    { label: "Type", value: typeLabel },
+    { label: "Downloads", value: String(file.downloads) },
+    { label: "Uploaded", value: formatDate(file.createdAt) },
+    { label: "Expires", value: formatExpiryRelative(file.expiresAt) },
+    { label: "Safety", value: scanLabel(file.scan) },
+    { label: "File ID", value: file.id, copy: true },
+  ];
 
   return (
-    <div className="flex items-start gap-3.5">
-      <span
-        className={`${ICON_BOX} ${
-          tone === "warn"
-            ? "text-amber-400/80"
-            : tone === "muted"
-              ? "text-zinc-500"
-              : "text-zinc-300"
-        }`}
-      >
-        <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <h1 className="truncate text-sm font-medium text-zinc-100" title={title}>
-          {title}
-        </h1>
-        <p className="mt-0.5 truncate font-mono text-xs text-zinc-500">{meta}</p>
-      </div>
+    <div>
+      <p className={EYEBROW}>{file.isExpired ? "Expired link" : "Shared file"}</p>
+
+      <h1 className="mt-4 break-words text-3xl font-semibold leading-[1.15] tracking-tight text-foreground md:text-4xl">
+        {file.originalName}
+      </h1>
+
+      <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+        <FileTypeIcon mimeType={file.mimeType} className="h-4 w-4" />
+        <span>
+          {typeLabel} · {formatBytes(file.sizeBytes)}
+        </span>
+      </p>
+
+      <dl className="mt-10 grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-3">
+        {stats.map((stat) => (
+          <div key={stat.label} className="min-w-0 bg-background px-4 py-3">
+            <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+              {stat.label}
+            </dt>
+            <dd className="mt-1.5 flex min-w-0 items-center gap-1.5 text-sm text-foreground">
+              <span className="break-words font-mono text-xs">{stat.value}</span>
+              {stat.copy ? <CopyFileIdButton fileId={file.id} /> : null}
+            </dd>
+          </div>
+        ))}
+      </dl>
     </div>
   );
 }
 
+/** Right column: the only place with actions. Monochrome, sharp edges. */
 export function DownloadCard({
   file,
   available = true,
@@ -101,86 +191,54 @@ export function DownloadCard({
   file: DlFileDto;
   available?: boolean;
 }) {
-  if (file.isExpired) {
-    return (
-      <div className={CARD}>
-        <CardHeader
-          title={file.originalName}
-          meta={`Expired ${file.expiresAt ? formatDate(file.expiresAt) : "earlier"}`}
-          icon="expired"
-          tone="muted"
-        />
-        <div className="my-4 border-t border-white/[0.06]" />
-        <p className="text-xs leading-relaxed text-zinc-400">
-          This link is no longer active. Ask the owner to share a new one.
-        </p>
-        <div className="mt-5 flex items-center gap-2">
-          <span className="font-mono text-[11px] text-zinc-600">{file.id}</span>
-          <CopyFileIdButton fileId={file.id} />
-        </div>
-      </div>
-    );
-  }
-
-  if (!available) {
-    return (
-      <div className={CARD}>
-        <CardHeader
-          title={file.originalName}
-          meta={`${formatBytes(file.sizeBytes)} • ${fileTypeLabel(file.originalName, file.mimeType)}`}
-          icon="missing"
-          tone="warn"
-        />
-        <div className="my-4 border-t border-white/[0.06]" />
-        <p className="text-xs leading-relaxed text-zinc-400">
-          The file is missing from storage. Ask the owner to upload it again.
-        </p>
-        <div className="mt-5 flex items-center gap-2">
-          <span className="font-mono text-[11px] text-zinc-600">{file.id}</span>
-          <CopyFileIdButton fileId={file.id} />
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className={CARD}>
-      <CardHeader
-        title={file.originalName}
-        meta={`${formatBytes(file.sizeBytes)} • ${fileTypeLabel(file.originalName, file.mimeType)}`}
-        icon="file"
-      />
+    <div className="border border-border bg-muted/30 p-6">
+      <p className={EYEBROW}>Download</p>
 
-      <div className="my-4 border-t border-white/[0.06]" />
+      {file.isExpired ? (
+        <>
+          <p className="mt-3 text-sm font-semibold text-foreground">This link has expired</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Ask the owner to share a new link if you still need this file.
+          </p>
+        </>
+      ) : !available ? (
+        <>
+          <p className="mt-3 text-sm font-semibold text-foreground">File is unavailable</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            The object is no longer in storage. Ask the owner to upload it again.
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Your download starts immediately. No account required.
+          </p>
 
-      <dl className="space-y-2.5 text-xs">
-        <div className={ROW}>
-          <dt className="text-zinc-500">Uploaded</dt>
-          <dd className="font-mono text-zinc-300">{formatDate(file.createdAt)}</dd>
-        </div>
-        <div className={ROW}>
-          <dt className="text-zinc-500">Expires</dt>
-          <dd className="font-mono text-zinc-300">{formatExpiryRelative(file.expiresAt)}</dd>
-        </div>
-        <div className={ROW}>
-          <dt className="text-zinc-500">File ID</dt>
-          <dd className="flex items-center gap-1.5">
-            <span className="font-mono text-zinc-400">{file.id}</span>
-            <CopyFileIdButton fileId={file.id} />
-          </dd>
-        </div>
-      </dl>
+          <SafetyNotice file={file} />
 
-      <div className="mt-5 flex items-center gap-2">
-        <a
-          href={`/api/dl/${file.id}/download`}
-          className="flex h-9 flex-1 items-center justify-center gap-2 rounded-md bg-zinc-100 text-xs font-medium text-zinc-950 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400"
-        >
-          <Download className="h-3.5 w-3.5" aria-hidden="true" />
-          Download
-        </a>
-        <CopyLinkButton url={file.publicUrl} />
-      </div>
+          {file.scan.status === "malicious" ? null : (
+            <>
+              <a
+                href={`/api/dl/${file.id}/download`}
+                className="mt-6 flex h-12 w-full items-center justify-center gap-2 bg-foreground text-sm font-semibold text-background transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                <Download className="h-4 w-4" aria-hidden="true" />
+                Download file
+              </a>
+
+              <CopyLinkButton
+                url={file.publicUrl}
+                className="mt-2 h-12 w-full rounded-none focus-visible:ring-foreground/40"
+              />
+            </>
+          )}
+
+          <p className="mt-5 border-t border-border pt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            Served from a short-lived private link
+          </p>
+        </>
+      )}
     </div>
   );
 }

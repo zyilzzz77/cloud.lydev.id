@@ -1,7 +1,9 @@
 import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { createReadStream } from "node:fs";
 import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import type { Readable } from "node:stream";
 import {
   DeleteObjectCommand,
   GetObjectCommand,
@@ -26,6 +28,10 @@ export interface ObjectInfo {
   contentType: string | null;
 }
 
+export interface ObjectStream extends ObjectInfo {
+  stream: Readable;
+}
+
 export interface StorageDriver {
   createUploadTarget(
     key: string,
@@ -36,6 +42,8 @@ export interface StorageDriver {
   createDownloadTarget(key: string, filename: string, expiresInSeconds: number): Promise<string>;
   publicUrl(key: string): string;
   headObject(key: string): Promise<ObjectInfo | null>;
+  /** Full object body, used by the malware scanner. */
+  getObjectStream(key: string): Promise<ObjectStream | null>;
   deleteObject(key: string): Promise<void>;
 }
 
@@ -143,6 +151,16 @@ class LocalStorageDriver implements StorageDriver {
     } catch {
       return null;
     }
+  }
+
+  async getObjectStream(key: string): Promise<ObjectStream | null> {
+    const info = await this.headObject(key);
+
+    if (!info) {
+      return null;
+    }
+
+    return { ...info, stream: createReadStream(localPath(key)) };
   }
 
   async deleteObject(key: string): Promise<void> {
@@ -290,6 +308,26 @@ class R2StorageDriver implements StorageDriver {
     }
   }
 
+  async getObjectStream(key: string): Promise<ObjectStream | null> {
+    try {
+      const result = await this.clientFor(key).send(
+        new GetObjectCommand({ Bucket: this.bucketFor(key), Key: key }),
+      );
+
+      if (!result.Body) {
+        return null;
+      }
+
+      return {
+        sizeBytes: result.ContentLength ?? 0,
+        contentType: result.ContentType ?? null,
+        stream: result.Body as Readable,
+      };
+    } catch {
+      return null;
+    }
+  }
+
   async deleteObject(key: string): Promise<void> {
     await this.clientFor(key).send(
       new DeleteObjectCommand({ Bucket: this.bucketFor(key), Key: key }),
@@ -380,6 +418,26 @@ class CosStorageDriver implements StorageDriver {
     }
   }
 
+  async getObjectStream(key: string): Promise<ObjectStream | null> {
+    try {
+      const result = await this.client.send(
+        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      );
+
+      if (!result.Body) {
+        return null;
+      }
+
+      return {
+        sizeBytes: result.ContentLength ?? 0,
+        contentType: result.ContentType ?? null,
+        stream: result.Body as Readable,
+      };
+    } catch {
+      return null;
+    }
+  }
+
   async deleteObject(key: string): Promise<void> {
     await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
   }
@@ -422,6 +480,10 @@ class CompositeStorageDriver implements StorageDriver {
 
   async headObject(key: string): Promise<ObjectInfo | null> {
     return (await this.primary.headObject(key)) ?? this.secondary.headObject(key);
+  }
+
+  async getObjectStream(key: string): Promise<ObjectStream | null> {
+    return (await this.primary.getObjectStream(key)) ?? this.secondary.getObjectStream(key);
   }
 
   async deleteObject(key: string): Promise<void> {

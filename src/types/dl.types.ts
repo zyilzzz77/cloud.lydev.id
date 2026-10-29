@@ -1,3 +1,12 @@
+export type DlScanStatus = "clean" | "suspicious" | "malicious" | "unscanned";
+
+export interface DlScanInfo {
+  status: DlScanStatus;
+  engine: string | null;
+  detail: string | null;
+  scannedAt: string | null;
+}
+
 export interface DlFileDto {
   id: string;
   originalName: string;
@@ -10,6 +19,9 @@ export interface DlFileDto {
   publicUrl: string;
   isExpired: boolean;
   hasPassword: boolean;
+  /** True for executables, installers, scripts, and disk images. */
+  risky: boolean;
+  scan: DlScanInfo;
 }
 
 export interface DlListResponse {

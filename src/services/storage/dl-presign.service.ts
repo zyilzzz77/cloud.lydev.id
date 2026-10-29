@@ -5,7 +5,7 @@ import { dlFiles, users, type DlFileRow, type UserRow } from "@/db/schema";
 import { AppError } from "@/lib/errors";
 import { env } from "@/lib/env";
 import { createDlAccessToken, verifyDlAccessToken } from "@/lib/dl-access";
-import { validateDlUploadMeta } from "@/lib/file-validator";
+import { isRiskyExtension, validateDlUploadMeta } from "@/lib/file-validator";
 import { createDlFileId } from "@/lib/id-generator";
 import { logger } from "@/lib/logger";
 import { createUploadToken, verifyUploadToken } from "@/lib/upload-token";
@@ -25,9 +25,17 @@ import {
   syncDlFileToEdge,
   type DlEdgeMeta,
 } from "@/services/shortener/edge-sync.service";
+import { scanStoredFile, type ScanStatus } from "@/services/security/malware-scan.service";
 import { assertQuota } from "@/services/storage/quota.service";
 import { getStorage, type UploadTarget } from "@/services/storage/storage.service";
 import { consumeTransfer } from "@/services/storage/transfer.service";
+
+export interface DlScanDto {
+  status: ScanStatus;
+  engine: string | null;
+  detail: string | null;
+  scannedAt: string | null;
+}
 
 export interface DlFileDto {
   id: string;
@@ -41,6 +49,9 @@ export interface DlFileDto {
   publicUrl: string;
   isExpired: boolean;
   hasPassword: boolean;
+  /** True for executables, installers, scripts, and disk images. */
+  risky: boolean;
+  scan: DlScanDto;
 }
 
 export interface CreateDlUploadInput {
@@ -85,6 +96,11 @@ function toEdgeMeta(row: DlFileRow): DlEdgeMeta {
     expiresAt: row.expiresAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     protected: Boolean(row.passwordHash),
+    risky: isRiskyExtension(row.originalName),
+    scan: {
+      status: row.scanStatus as ScanStatus,
+      detail: row.scanDetail,
+    },
   };
 }
 
@@ -101,6 +117,13 @@ function toDto(row: DlFileRow): DlFileDto {
     publicUrl: buildDlUrl(row.id),
     isExpired: row.expiresAt ? row.expiresAt.getTime() <= Date.now() : false,
     hasPassword: Boolean(row.passwordHash),
+    risky: isRiskyExtension(row.originalName),
+    scan: {
+      status: row.scanStatus as ScanStatus,
+      engine: row.scanEngine,
+      detail: row.scanDetail,
+      scannedAt: row.scannedAt?.toISOString() ?? null,
+    },
   };
 }
 
@@ -159,6 +182,30 @@ export async function completeDlUpload(
     throw new AppError("VALIDATION_ERROR", "Uploaded size does not match the request.", 400);
   }
 
+  // The bytes are inspected before the file is registered, so a flagged upload
+  // never reaches a download link and never counts against the owner's quota.
+  const scan = await scanStoredFile({
+    key: fileKey,
+    filename: meta.safeName,
+    mimeType: meta.mimeType,
+    sizeBytes: meta.sizeBytes,
+  });
+
+  if (scan.status === "malicious") {
+    await getStorage().deleteObject(fileKey);
+
+    logger.warn(
+      { fileId: input.fileId, engine: scan.engine, detail: scan.detail },
+      "Upload rejected: malware detected",
+    );
+
+    throw new AppError("FILE_INFECTED", "This file was flagged as malware and was not saved.", 422);
+  }
+
+  if (scan.status === "suspicious") {
+    logger.warn({ fileId: input.fileId, detail: scan.detail }, "Upload flagged as suspicious");
+  }
+
   const passwordHash = input.password ? await hashPassword(input.password) : null;
 
   const row = await db.transaction(async (tx) => {
@@ -173,6 +220,11 @@ export async function completeDlUpload(
         mimeType: meta.mimeType,
         sizeBytes: meta.sizeBytes,
         passwordHash,
+        sha256: scan.sha256,
+        scanStatus: scan.status,
+        scanEngine: scan.engine,
+        scanDetail: scan.detail,
+        scannedAt: new Date(),
         expiresAt: expiryFromDays(input.expiresInDays),
       })
       .returning();

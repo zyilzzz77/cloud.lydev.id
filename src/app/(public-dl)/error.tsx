@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 
 export default function DownloadError({ reset }: { error: Error; reset: () => void }) {
   return (
-    <div className="flex min-h-dvh items-center justify-center px-4">
+    <div className="flex items-center justify-center px-6 py-24">
       <ErrorState
         title="Download page could not load"
         description="The file information could not be retrieved."

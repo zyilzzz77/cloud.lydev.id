@@ -7,6 +7,75 @@ import {
   safeFilename,
 } from "../../shared/ui.js";
 
+const FILE_ICON = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>`;
+
+const DOWNLOAD_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>`;
+
+/** Hairline stat grid, one cell per fact. Mirrors the app render. */
+function statsGrid(items) {
+  return `<div class="stats">${items
+    .map(
+      (item) =>
+        `<div class="stat"><div class="stat-label">${escapeHtml(item.label)}</div><div class="stat-value">${escapeHtml(item.value)}</div></div>`,
+    )
+    .join("")}</div>`;
+}
+
+function scanStatus(meta) {
+  const status = meta?.scan?.status;
+  return status === "clean" || status === "suspicious" || status === "malicious"
+    ? status
+    : "unscanned";
+}
+
+function scanLabel(meta) {
+  switch (scanStatus(meta)) {
+    case "clean":
+      return "No threats found";
+    case "suspicious":
+      return "Suspicious content";
+    case "malicious":
+      return "Malware detected";
+    default:
+      return "Not scanned";
+  }
+}
+
+/** Warning shown above the download button for executables and flagged files. */
+function safetyNotice(meta) {
+  const status = scanStatus(meta);
+  const detail = meta?.scan?.detail ? escapeHtml(meta.scan.detail) : "";
+
+  if (status === "malicious") {
+    return `<div class="notice">
+      <p class="notice-title">Blocked by the scanner</p>
+      <p class="notice-text">${detail || "This file is flagged as malware."} Ask the owner to upload a clean copy.</p>
+    </div>`;
+  }
+
+  if (status === "suspicious" || meta?.risky) {
+    const title = meta?.risky ? "Executable file" : "Check before opening";
+    const text = detail || "This file can run code on your device. Only open it if you trust the sender.";
+
+    return `<div class="notice">
+      <p class="notice-title">${title}</p>
+      <p class="notice-text">${text}</p>
+      ${status === "unscanned" ? '<p class="notice-text">No antivirus engine checked this file.</p>' : ""}
+    </div>`;
+  }
+
+  return "";
+}
+
+function identity({ eyebrow, name, sub, items }) {
+  return `<div>
+    <p class="eyebrow">${escapeHtml(eyebrow)}</p>
+    <h1>${name}</h1>
+    ${sub ? `<p class="sub">${sub}</p>` : ""}
+    ${items && items.length ? statsGrid(items) : ""}
+  </div>`;
+}
+
 function renderDownloadPage(id, meta) {
   const name = escapeHtml(meta.name || "download");
   const extension = String(meta.name || "").split(".").pop()?.toUpperCase() || "FILE";
@@ -15,28 +84,34 @@ function renderDownloadPage(id, meta) {
   const downloadUrl = `/${encodeURIComponent(id)}/download`;
   const publicUrl = `https://dl.lydev.id/${encodeURIComponent(id)}`;
 
-  const body = `
-    <div class="file-icon">
-      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>
+  const body = `<div class="grid">
+    ${identity({
+      eyebrow: "Shared file",
+      name,
+      sub: `${FILE_ICON}<span>${formatBytes(meta.sizeBytes)} · ${escapeHtml(extension)}</span>`,
+      items: [
+        { label: "Size", value: formatBytes(meta.sizeBytes) },
+        { label: "Type", value: extension },
+        { label: "Uploaded", value: createdAt },
+        { label: "Expires", value: expires },
+        { label: "File id", value: id },
+        { label: "Access", value: meta.protected ? "Password" : "Public link" },
+        { label: "Safety", value: scanLabel(meta) },
+      ],
+    })}
+    <div class="panel">
+      <p class="eyebrow">Download</p>
+      <p class="panel-text">Your download starts immediately. No account required.</p>
+      ${safetyNotice(meta)}
+      ${
+        scanStatus(meta) === "malicious"
+          ? ""
+          : `<a class="download" href="${downloadUrl}">${DOWNLOAD_ICON}Download file</a>
+      <button class="secondary" id="copy-link" data-url="${escapeHtml(publicUrl)}" type="button">Copy link</button>`
+      }
+      <p class="panel-note">Served from a short-lived private link</p>
     </div>
-    <h1>${name}</h1>
-    <div class="badges">
-      <span class="badge">${formatBytes(meta.sizeBytes)}</span>
-      <span class="badge">${escapeHtml(extension)}</span>
-    </div>
-    <div class="meta">
-      <div><div class="meta-label">File size</div><div class="meta-value">${formatBytes(meta.sizeBytes)}</div></div>
-      <div><div class="meta-label">Uploaded</div><div class="meta-value">${escapeHtml(createdAt)}</div></div>
-      <div><div class="meta-label">Expires</div><div class="meta-value">${escapeHtml(expires)}</div></div>
-      <div><div class="meta-label">File id</div><div class="meta-value">${escapeHtml(id)}</div></div>
-    </div>
-    <a class="download" href="${downloadUrl}">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
-      Download file
-    </a>
-    <button class="secondary" id="copy-link" data-url="${escapeHtml(publicUrl)}" type="button">Copy link</button>
-    <div class="note">Your download starts immediately. No account required.</div>
-  `;
+  </div>`;
 
   return htmlPage(`Download ${meta.name || "file"} - Lydev Cloud`, body);
 }
@@ -44,28 +119,44 @@ function renderDownloadPage(id, meta) {
 function renderExpiredPage(meta) {
   const name = escapeHtml(meta.name || "This file");
   const expires = meta.expiresAt ? formatDate(meta.expiresAt) : "an earlier date";
-  return htmlPage(
-    "Download link expired - Lydev Cloud",
-    `<div class="state-icon state-warn">
-      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+  const extension = String(meta.name || "").split(".").pop()?.toUpperCase() || "FILE";
+
+  const body = `<div class="grid">
+    ${identity({
+      eyebrow: "Expired link",
+      name,
+      sub: `${FILE_ICON}<span>${formatBytes(meta.sizeBytes)} · ${escapeHtml(extension)}</span>`,
+      items: [
+        { label: "Size", value: formatBytes(meta.sizeBytes) },
+        { label: "Uploaded", value: formatDate(meta.createdAt) },
+        { label: "Expired", value: expires },
+      ],
+    })}
+    <div class="panel">
+      <p class="eyebrow">Download</p>
+      <p class="panel-title">This link has expired</p>
+      <p class="panel-text">${name} is no longer available. The link expired on ${escapeHtml(expires)}.</p>
     </div>
-    <h1>This link has expired</h1>
-    <p class="state-text">${name} is no longer available. The link expired on ${escapeHtml(expires)}.</p>`,
-    410,
-  );
+  </div>`;
+
+  return htmlPage("Download link expired - Lydev Cloud", body, 410);
 }
 
 function renderUnavailablePage(id) {
-  return htmlPage(
-    "File unavailable - Lydev Cloud",
-    `<div class="state-icon state-error">
-      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+  const body = `<div class="grid">
+    ${identity({
+      eyebrow: "Unavailable",
+      name: "File unavailable",
+      sub: `${FILE_ICON}<span>Reference ${escapeHtml(id)}</span>`,
+    })}
+    <div class="panel">
+      <p class="eyebrow">Download</p>
+      <p class="panel-title">This file is no longer stored</p>
+      <p class="panel-text">Ask the owner to upload it again.</p>
     </div>
-    <h1>File unavailable</h1>
-    <p class="state-text">This file is no longer stored on Lydev Cloud. Ask the owner to upload it again.</p>
-    <div class="note">Reference: ${escapeHtml(id)}</div>`,
-    404,
-  );
+  </div>`;
+
+  return htmlPage("File unavailable - Lydev Cloud", body, 404);
 }
 
 function reportView(env, ctx, request, fileId) {
@@ -139,6 +230,25 @@ async function handleDownload(request, url, env, ctx) {
   }
 
   const isDownload = segments[1] === "download";
+
+  if (isDownload && scanStatus(meta) === "malicious") {
+    return htmlPage(
+      "File blocked - Lydev Cloud",
+      `<div class="grid">
+        ${identity({
+          eyebrow: "Blocked",
+          name: "This file was flagged",
+          sub: `${FILE_ICON}<span>Reference ${escapeHtml(id)}</span>`,
+        })}
+        <div class="panel">
+          <p class="eyebrow">Download</p>
+          <p class="panel-title">The scanner blocked this file</p>
+          <p class="panel-text">Ask the owner to upload a clean copy.</p>
+        </div>
+      </div>`,
+      403,
+    );
+  }
 
   if (!isDownload) {
     const head = await env.FILES.head(meta.key);

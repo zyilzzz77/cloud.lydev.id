@@ -100,6 +100,16 @@ const MIME_EXTENSIONS: Record<string, string> = {
   "application/x-photoshop": "psd",
   "application/illustrator": "ai",
   "application/postscript": "eps",
+  "application/x-msdownload": "exe",
+  "application/vnd.microsoft.portable-executable": "exe",
+  "application/x-msi": "msi",
+  "application/vnd.android.package-archive": "apk",
+  "application/java-archive": "jar",
+  "application/x-apple-diskimage": "dmg",
+  "application/x-iso9660-image": "iso",
+  "application/x-sh": "sh",
+  "text/x-shellscript": "sh",
+  "application/x-powershell": "ps1",
 };
 
 const FOLDER_EXTENSIONS: Record<AssetFolder, Set<string>> = {
@@ -185,6 +195,74 @@ export interface ValidatedDlUploadMeta {
   safeSlug: string;
   mimeType: string;
   sizeBytes: number;
+  extension: string;
+  /** True for executables, installers, scripts, and disk images. */
+  risky: boolean;
+}
+
+/**
+ * Formats that can run code on the visitor's machine. They are allowed on the
+ * download host (everything is served as an attachment), but the page warns
+ * before the file is opened and the scanner result is shown next to it.
+ */
+const RISKY_EXTENSIONS = new Set([
+  "exe",
+  "msi",
+  "msix",
+  "appx",
+  "bat",
+  "cmd",
+  "com",
+  "scr",
+  "pif",
+  "ps1",
+  "psm1",
+  "vbs",
+  "vbe",
+  "wsf",
+  "wsh",
+  "hta",
+  "lnk",
+  "reg",
+  "jar",
+  "apk",
+  "ipa",
+  "dmg",
+  "pkg",
+  "app",
+  "deb",
+  "rpm",
+  "iso",
+  "img",
+  "vhd",
+  "vhdx",
+  "dll",
+  "sys",
+  "drv",
+  "so",
+  "dylib",
+  "sh",
+  "bash",
+  "zsh",
+  "py",
+  "rb",
+  "pl",
+  "php",
+  "asp",
+  "aspx",
+  "jsp",
+  "cgi",
+  "bin",
+  "run",
+  "elf",
+]);
+
+export function isRiskyExtension(filename: string): boolean {
+  return RISKY_EXTENSIONS.has(extensionFromName(filename));
+}
+
+export function riskyExtensions(): ReadonlySet<string> {
+  return RISKY_EXTENSIONS;
 }
 
 const BLOCKED_MIME_TYPES = new Set([
@@ -274,14 +352,17 @@ export function mimeTypeForExtension(extension: string): string {
   return "application/octet-stream";
 }
 
+/**
+ * Download uploads accept every format, including executables. The type is not
+ * trusted: the scanner inspects the bytes after the upload lands in storage,
+ * and the visitor sees the verdict before opening the file.
+ */
 export function validateDlUploadMeta(input: DlUploadMetaInput): ValidatedDlUploadMeta {
-  const mimeType = (input.mimeType || "application/octet-stream").toLowerCase();
+  const mimeType =
+    (input.mimeType || "application/octet-stream").toLowerCase().split(";")[0]?.trim() ||
+    "application/octet-stream";
   const safeName = sanitizeFilename(input.filename);
   const extension = extensionFromName(safeName);
-
-  if (BLOCKED_MIME_TYPES.has(mimeType) || BLOCKED_EXTENSIONS.has(extension)) {
-    throw new AppError("UNSUPPORTED_TYPE", "Executables and HTML files are not allowed.", 415);
-  }
 
   if (!Number.isInteger(input.sizeBytes) || input.sizeBytes <= 0) {
     throw new AppError("VALIDATION_ERROR", "File size must be a positive integer.", 400);
@@ -294,8 +375,10 @@ export function validateDlUploadMeta(input: DlUploadMetaInput): ValidatedDlUploa
   return {
     safeName,
     safeSlug: safeName,
-    mimeType,
+    mimeType: mimeType === "application/octet-stream" && extension ? mimeTypeForExtension(extension) : mimeType,
     sizeBytes: input.sizeBytes,
+    extension,
+    risky: RISKY_EXTENSIONS.has(extension),
   };
 }
 

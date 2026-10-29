@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { after } from "next/server";
-import { Cloud } from "lucide-react";
-import { DownloadCard } from "@/components/dl/download-card";
+import { DownloadCard, FileSummary } from "@/components/dl/download-card";
 import { DownloadGate } from "@/components/dl/download-gate";
 import { dlAccessCookieName, verifyDlAccessToken } from "@/lib/dl-access";
 import { recordPageView } from "@/services/stats/view.service";
@@ -97,22 +96,35 @@ export default async function DownloadPage({
   }
 
   return (
-    <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-[#09090b] px-4 py-12">
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(ellipse_at_top,rgba(39,39,42,0.45),transparent_65%)]"
-        aria-hidden="true"
-      />
-      <div className="relative w-full max-w-md">
-        <div className="mb-3 flex items-center gap-2 px-0.5">
-          <Cloud className="h-3.5 w-3.5 text-zinc-500" strokeWidth={1.75} aria-hidden="true" />
-          <span className="font-mono text-xs tracking-tight text-zinc-500">lydev.cloud</span>
+    <div className="mx-auto w-full max-w-5xl px-6 py-12 md:py-16">
+      <div className="grid gap-10 md:grid-cols-12 md:gap-12">
+        <div className="md:col-span-7">
+          {locked ? (
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                Protected link
+              </p>
+              <h1 className="mt-4 text-3xl font-semibold leading-[1.15] tracking-tight text-foreground md:text-4xl">
+                Password required
+              </h1>
+              <p className="mt-4 max-w-md text-sm text-muted-foreground">
+                This file is locked. Enter the password the owner shared with you to see the
+                download.
+              </p>
+            </div>
+          ) : (
+            <FileSummary file={toDlFileDto(row)} />
+          )}
         </div>
-        {locked ? (
-          <DownloadGate fileId={row.id} />
-        ) : (
-          <DownloadCard file={toDlFileDto(row)} available={available} />
-        )}
+
+        <div className="md:col-span-5">
+          {locked ? (
+            <DownloadGate fileId={row.id} />
+          ) : (
+            <DownloadCard file={toDlFileDto(row)} available={available} />
+          )}
+        </div>
       </div>
-    </main>
+    </div>
   );
 }

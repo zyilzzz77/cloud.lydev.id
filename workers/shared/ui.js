@@ -52,6 +52,102 @@ export function safeFilename(name) {
   return base || "download";
 }
 
+/**
+ * The edge downloader is monochrome on purpose: pure black or pure white, no
+ * accent colour, hairline borders, sharp corners. It follows the visitor's
+ * light or dark preference and mirrors the same layout as the app render.
+ */
+const PAGE_STYLES = `
+  :root {
+    --bg: #ffffff;
+    --fg: #09090b;
+    --muted: #71717a;
+    --border: #e4e4e7;
+    --border-strong: #d4d4d8;
+    --subtle: #fafafa;
+    --btn-bg: #09090b;
+    --btn-fg: #ffffff;
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #09090b;
+      --fg: #fafafa;
+      --muted: #a1a1aa;
+      --border: #27272a;
+      --border-strong: #3f3f46;
+      --subtle: #101012;
+      --btn-bg: #fafafa;
+      --btn-fg: #09090b;
+      color-scheme: dark;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: inherit; }
+
+  .topbar { border-bottom: 1px solid var(--border); }
+  .topbar-inner { max-width: 1024px; margin: 0 auto; padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .brand-mark { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--border); color: var(--fg); }
+  .brand-name { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase; }
+  .kicker { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); }
+
+  .main { flex: 1; display: flex; align-items: center; }
+  .inner { width: 100%; max-width: 1024px; margin: 0 auto; padding: 48px 24px 64px; }
+  .grid { display: grid; grid-template-columns: 7fr 5fr; gap: 48px; align-items: start; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; gap: 32px; } .inner { padding: 32px 20px 48px; } }
+
+  .eyebrow { margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); }
+
+  h1 { margin: 16px 0 0; font-size: 34px; line-height: 1.15; font-weight: 600; letter-spacing: -.02em; word-break: break-word; }
+  @media (max-width: 860px) { h1 { font-size: 26px; } }
+
+  .sub { margin: 16px 0 0; display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+
+  .stats { margin-top: 40px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; border: 1px solid var(--border); background: var(--border); }
+  @media (max-width: 640px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat { min-width: 0; padding: 12px 16px; background: var(--bg); }
+  .stat-label { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+  .stat-value { margin-top: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--fg); overflow-wrap: anywhere; }
+
+  .panel { border: 1px solid var(--border); background: var(--subtle); padding: 24px; }
+  .panel-text { margin: 12px 0 0; font-size: 14px; line-height: 1.6; color: var(--muted); }
+  .panel-title { margin: 12px 0 0; font-size: 14px; font-weight: 600; color: var(--fg); }
+
+  .download { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 48px; margin-top: 24px; border: 0; background: var(--btn-bg); color: var(--btn-fg); font-size: 14px; font-weight: 600; text-decoration: none; transition: opacity 140ms ease; }
+  .download:hover { opacity: .9; }
+
+  .secondary { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 48px; margin-top: 8px; border: 1px solid var(--border-strong); background: transparent; color: var(--fg); font-size: 14px; font-weight: 500; cursor: pointer; transition: background-color 140ms ease; }
+  .secondary:hover { background: var(--bg); }
+
+  .panel-note { margin: 20px 0 0; padding-top: 16px; border-top: 1px solid var(--border); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+
+  .footer { border-top: 1px solid var(--border); }
+  .footer-inner { max-width: 1024px; margin: 0 auto; padding: 20px 24px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+
+  .toast { position: fixed; right: 20px; bottom: 20px; display: none; border: 1px solid var(--border); background: var(--btn-bg); color: var(--btn-fg); padding: 10px 14px; font-size: 12px; }
+
+  .notice { border: 1px dashed var(--border); padding: 16px; margin-top: 16px; }
+  .notice-title { font-size: 14px; font-weight: 600; }
+  .notice-text { margin: 6px 0 0; font-size: 14px; line-height: 1.6; color: var(--muted); }
+  .notice-mark { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--border); color: var(--fg); margin-bottom: 16px; }
+`;
+
 export function htmlPage(title, body, status = 200, indexable = false) {
   const html = `<!doctype html>
 <html lang="en">
@@ -60,57 +156,31 @@ export function htmlPage(title, body, status = 200, indexable = false) {
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="${indexable ? "index,follow" : "noindex,nofollow"}" />
 <title>${escapeHtml(title)}</title>
-<style>
-  :root { color-scheme: dark; }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    min-height: 100vh;
-    background: radial-gradient(circle at 50% -10%, #12223f 0%, #070d18 45%, #050811 100%);
-    color: #e8eefc;
-    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  }
-  .shell { max-width: 620px; margin: 0 auto; padding: 24px 18px 48px; }
-  .brand { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; letter-spacing: .22em; color: #dbe7ff; }
-  .brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: rgba(59,130,246,.16); color: #8db4ff; }
-  .card { margin-top: 28px; border: 1px solid #1b2942; border-radius: 18px; background: #0a1120; box-shadow: 0 24px 80px rgba(0,0,0,.45); overflow: hidden; }
-  .card-body { padding: 28px 24px; }
-  .file-icon { display: grid; place-items: center; width: 64px; height: 64px; margin: 0 auto; border-radius: 18px; background: rgba(59,130,246,.12); color: #8db4ff; }
-  h1 { margin: 16px 0 0; font-size: 20px; line-height: 1.35; text-align: center; word-break: break-word; }
-  .badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 10px; }
-  .badge { border: 1px solid #223552; border-radius: 999px; padding: 4px 10px; font-size: 11px; color: #a9bbd8; }
-  .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 22px; padding: 16px; border: 1px solid #1b2942; border-radius: 12px; background: #070d18; }
-  .meta-label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #7f93b5; }
-  .meta-value { margin-top: 4px; font-size: 13px; color: #e8eefc; word-break: break-word; }
-  .download { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 50px; margin-top: 22px; border-radius: 10px; background: #3b82f6; color: #fff; font-size: 15px; font-weight: 600; text-decoration: none; }
-  .download:hover { background: #2f6fe0; }
-  .secondary { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 42px; margin-top: 10px; border: 1px solid #223552; border-radius: 10px; background: transparent; color: #c9d7ef; font-size: 13px; font-weight: 500; cursor: pointer; }
-  .secondary:hover { background: #0f1a2c; }
-  .note { margin-top: 16px; text-align: center; font-size: 11px; color: #7f93b5; }
-  .footer { margin-top: 22px; text-align: center; font-size: 11px; color: #5f7395; }
-  .toast { position: fixed; right: 18px; top: 18px; display: none; border-radius: 10px; background: #0f2a1c; border: 1px solid #1f5c3d; color: #b8f3d1; padding: 10px 14px; font-size: 12px; }
-  .state-icon { width: 64px; height: 64px; margin: 0 auto; border-radius: 18px; display: grid; place-items: center; }
-  .state-error { background: rgba(239,68,68,.12); color: #fca5a5; }
-  .state-warn { background: rgba(245,158,11,.12); color: #fcd34d; }
-  p.state-text { margin: 14px 0 0; text-align: center; color: #a9bbd8; font-size: 14px; line-height: 1.6; }
-  @media (max-width: 480px) { .meta { grid-template-columns: 1fr; } .card-body { padding: 22px 18px; } }
-</style>
+<style>${PAGE_STYLES}</style>
 </head>
 <body>
-<div class="shell">
-  <div class="brand">
-    <span class="brand-mark">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19a4.5 4.5 0 0 0 .5-8.97A6 6 0 0 0 6.2 9.5 4.5 4.5 0 0 0 6.5 19h11Z"/></svg>
-    </span>
-    LYDEV CLOUD
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="https://cloud.lydev.id">
+      <span class="brand-mark">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19a4.5 4.5 0 0 0 .5-8.97A6 6 0 0 0 6.2 9.5 4.5 4.5 0 0 0 6.5 19h11Z"/></svg>
+      </span>
+      <span class="brand-name">Lydev Cloud</span>
+    </a>
+    <span class="kicker">File share</span>
   </div>
-  <div class="card">
-    <div class="card-body">
-      ${body}
-    </div>
+</header>
+<main class="main">
+  <div class="inner">
+    ${body}
   </div>
-  <div class="footer">Powered by Lydev Cloud</div>
-</div>
+</main>
+<footer class="footer">
+  <div class="footer-inner">
+    <span>Shared through Lydev Cloud</span>
+    <span>Files served from private storage</span>
+  </div>
+</footer>
 <div class="toast" id="toast">Link copied.</div>
 <script>
   const copyButton = document.getElementById("copy-link");
@@ -134,11 +204,17 @@ export function htmlPage(title, body, status = 200, indexable = false) {
 export function notFound() {
   return htmlPage(
     "Not found - Lydev Cloud",
-    `<div class="state-icon state-error">
-      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6"/><path d="M15 9l-6 6"/></svg>
-    </div>
-    <h1>Not found</h1>
-    <p class="state-text">This link does not exist or is no longer active.</p>`,
+    `<div class="grid">
+      <div>
+        <p class="eyebrow">Not found</p>
+        <h1>This link does not exist</h1>
+        <p class="panel-text">It may have been deleted, or the address was copied incompletely.</p>
+      </div>
+      <div class="panel">
+        <p class="eyebrow">Next step</p>
+        <p class="panel-text">Ask the owner to share the link again.</p>
+      </div>
+    </div>`,
     404,
   );
 }
@@ -146,11 +222,17 @@ export function notFound() {
 export function forbiddenPage() {
   return htmlPage(
     "Access key required - Lydev Cloud",
-    `<div class="state-icon state-error">
-      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-    </div>
-    <h1>This file is private</h1>
-    <p class="state-text">Open it with the keyed or signed link from the share dialog.</p>`,
+    `<div class="grid">
+      <div>
+        <p class="eyebrow">Protected link</p>
+        <h1>This file is private</h1>
+        <p class="panel-text">Open it with the keyed or signed link from the share dialog.</p>
+      </div>
+      <div class="panel">
+        <p class="eyebrow">Access</p>
+        <p class="panel-text">A key or a valid signature is required for this object.</p>
+      </div>
+    </div>`,
     403,
   );
 }

@@ -10,6 +10,12 @@ export interface DlEdgeMeta {
   expiresAt: string | null;
   createdAt: string;
   protected: boolean;
+  /** True for executables and installers, so the edge page can warn. */
+  risky?: boolean;
+  scan?: {
+    status: "clean" | "suspicious" | "malicious" | "unscanned";
+    detail: string | null;
+  };
 }
 
 function valueUrl(

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 function useCopy() {
@@ -44,10 +45,10 @@ export function CopyFileIdButton({ fileId }: { fileId: string }) {
       onClick={() => copy(fileId)}
       aria-label={copied ? "File ID copied" : "Copy file ID"}
       title={copied ? "Copied" : "Copy file ID"}
-      className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-zinc-600 transition-colors hover:text-zinc-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500"
+      className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {copied ? (
-        <Check className="h-3 w-3 text-emerald-400" aria-hidden="true" />
+        <Check className="h-3 w-3 text-success" aria-hidden="true" />
       ) : (
         <Copy className="h-3 w-3" aria-hidden="true" />
       )}
@@ -62,15 +63,12 @@ export function CopyLinkButton({ url, className }: { url: string; className?: st
     <button
       type="button"
       onClick={() => copy(url)}
-      className={cn(
-        "flex h-9 items-center justify-center gap-1.5 rounded-md border border-white/[0.08] bg-zinc-900 px-3 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500",
-        className,
-      )}
+      className={cn(buttonVariants({ variant: "outline", size: "lg" }), className)}
     >
       {copied ? (
-        <Check className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
+        <Check className="h-4 w-4 text-success" aria-hidden="true" />
       ) : (
-        <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+        <Copy className="h-4 w-4" aria-hidden="true" />
       )}
       {copied ? "Copied!" : "Copy link"}
     </button>

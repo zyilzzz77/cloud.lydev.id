@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { isAppError } from "@/lib/errors";
 import {
+  isRiskyExtension,
   sanitizeFilename,
+  validateDlUploadMeta,
   validateUploadMeta,
 } from "@/lib/file-validator";
 
@@ -163,6 +165,48 @@ describe("file validator", () => {
     expect(mov.extension).toBe("mov");
     expect(mov.mimeType).toBe("video/quicktime");
     expect(gif.extension).toBe("gif");
+  });
+
+  it("accepts executables and any other format for download links", () => {
+    const exe = validateDlUploadMeta({
+      filename: "setup.exe",
+      mimeType: "application/x-msdownload",
+      sizeBytes: 1024,
+    });
+    const unknown = validateDlUploadMeta({
+      filename: "backup.tar.zst",
+      mimeType: "application/octet-stream",
+      sizeBytes: 1024,
+    });
+
+    expect(exe.extension).toBe("exe");
+    expect(exe.risky).toBe(true);
+    expect(unknown.extension).toBe("zst");
+    expect(unknown.risky).toBe(false);
+  });
+
+  it("flags installers, scripts, and disk images as risky", () => {
+    expect(isRiskyExtension("Setup.MSI")).toBe(true);
+    expect(isRiskyExtension("run.sh")).toBe(true);
+    expect(isRiskyExtension("ubuntu.iso")).toBe(true);
+    expect(isRiskyExtension("photo.png")).toBe(false);
+    expect(isRiskyExtension("report.pdf")).toBe(false);
+  });
+
+  it("rejects oversized download files", () => {
+    try {
+      validateDlUploadMeta({
+        filename: "huge.iso",
+        mimeType: "application/octet-stream",
+        sizeBytes: 9_999_999_999_999,
+      });
+      throw new Error("Expected validation to fail.");
+    } catch (error) {
+      expect(isAppError(error)).toBe(true);
+      if (isAppError(error)) {
+        expect(error.code).toBe("FILE_TOO_LARGE");
+      }
+    }
   });
 
   it("falls back to the filename when the MIME type disagrees with the folder", () => {

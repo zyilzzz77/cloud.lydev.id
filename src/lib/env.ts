@@ -80,6 +80,22 @@ const envSchema = z.object({
     .optional()
     .transform((value) => (value && value.trim().length > 0 ? value.trim() : undefined)),
 
+  /** Optional hash lookup on VirusTotal; without it only offline checks run. */
+  VIRUSTOTAL_API_KEY: z
+    .string()
+    .optional()
+    .transform((value) => (value && value.trim().length > 0 ? value.trim() : undefined)),
+
+  /** Optional clamd endpoint (native install, no Docker). */
+  CLAMAV_HOST: z
+    .string()
+    .optional()
+    .transform((value) => (value && value.trim().length > 0 ? value.trim() : undefined)),
+  CLAMAV_PORT: z.coerce.number().int().positive().default(3310),
+
+  /** Files above this size are only checked with the offline heuristics. */
+  SCAN_MAX_BYTES: z.coerce.number().int().positive().default(33_554_432),
+
   /** Shared secret the Cloudflare Worker sends with edge view beacons. */
   EDGE_EVENT_SECRET: z
     .string()

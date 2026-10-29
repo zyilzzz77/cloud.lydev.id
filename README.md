@@ -88,6 +88,24 @@ R2_CDN_DOMAIN=cdn.lydev.id
 `CLOUDFLARE_API_TOKEN` with Zone Cache Purge is used to invalidate `cdn.lydev.id` when an asset is
 deleted. Tencent COS and the `.uploads/` filesystem remain available as fallbacks.
 
+## Malware scanning
+
+Download uploads accept every format, including `.exe`, `.msi`, and installers. Nothing is trusted
+by extension: after the object lands in storage, `scanStoredFile` inspects it before the file is
+registered, so a flagged upload never gets a download link.
+
+- Offline heuristics always run: EICAR signature, double extensions (`invoice.pdf.exe`), and
+  magic-number mismatches (a PE binary named `.jpg`).
+- ClamAV runs when `CLAMAV_HOST` points at a local `clamd` (native install, no Docker).
+- VirusTotal is queried by SHA-256 when `VIRUSTOTAL_API_KEY` is set; the file never leaves the
+  server.
+- A `malicious` verdict deletes the object and returns `422 FILE_INFECTED`. `suspicious` and
+  unscanned executables stay available, but the download page shows a warning and the scanner
+  verdict. Files above `SCAN_MAX_BYTES` (32 MB by default) are only checked by name and header.
+
+Without ClamAV or VirusTotal the verdict is `unscanned`, which is shown as "Not scanned" instead of
+a fake "clean".
+
 ## Scripts
 
 | Script | Purpose |
