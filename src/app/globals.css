@@ -116,6 +116,30 @@
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-dot: var(--font-dot-gothic);
+}
+
+/* Marketing entrance motion. Kept here so the landing page stays a server
+   component; each element opts in with a delay via inline style. */
+@keyframes lydev-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-rise {
+  animation: lydev-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise {
+    animation: none;
+  }
 }
 
 @layer base {

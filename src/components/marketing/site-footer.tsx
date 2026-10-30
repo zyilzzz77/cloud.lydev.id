@@ -8,22 +8,22 @@ export function SiteFooter() {
         <div className="space-y-2">
           <Brand />
           <p className="text-sm text-muted-foreground">
-            CDN assets, short links, and file sharing for the lydev.id ecosystem.
+            CDN aset, shortlink, dan berbagi file dalam satu platform untuk ekosistem lydev.id.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-5 text-sm text-muted-foreground">
           <Link href="/docs/api" className="transition-colors hover:text-foreground">
-            API docs
+            Dokumentasi API
           </Link>
           <Link href="/terms" className="transition-colors hover:text-foreground">
-            Terms
+            Syarat & Ketentuan
           </Link>
           <Link href="/privacy" className="transition-colors hover:text-foreground">
-            Privacy
+            Privasi
           </Link>
           <Link href="/login" className="transition-colors hover:text-foreground">
-            Sign in
+            Masuk
           </Link>
         </div>
       </div>
