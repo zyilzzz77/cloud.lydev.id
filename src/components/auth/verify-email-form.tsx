@@ -132,8 +132,8 @@ export function VerifyEmailForm({
               maxLength={6}
               value={code}
               onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-              placeholder="123456"
-              className="text-center text-2xl tracking-[0.4em]"
+              placeholder="Paste your code"
+              className="text-center text-2xl tracking-[0.4em] placeholder:text-base placeholder:tracking-normal placeholder:font-normal"
               required
             />
           </div>
