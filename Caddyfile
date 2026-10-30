@@ -5,7 +5,9 @@
     }
 }
 
-cloud.lydev.id, uri.lydev.id, dl.lydev.id {
+# uri.lydev.id and dl.lydev.id are served entirely by the Cloudflare Workers in
+# workers/short-links; their ACME challenges never reach this origin.
+cloud.lydev.id {
     encode zstd gzip
 
     header {
