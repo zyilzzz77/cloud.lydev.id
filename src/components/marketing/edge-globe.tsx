@@ -144,7 +144,7 @@ export function EdgeGlobe({ className }: { className?: string }) {
           focusable="false"
         >
           <defs>
-            <path id="edge-globe-label-arc" d="M 40 224 A 170 170 0 0 1 160 224" fill="none" />
+            <path id="edge-globe-label-arc" d="M 18 226 A 200 200 0 0 1 182 226" fill="none" />
           </defs>
 
           {/* Sphere silhouette. */}
@@ -202,8 +202,8 @@ export function EdgeGlobe({ className }: { className?: string }) {
             className="fill-muted-foreground"
             fillOpacity={0.85}
             fontFamily="var(--font-geist-mono), ui-monospace, monospace"
-            fontSize={7}
-            letterSpacing={2.1}
+            fontSize={6.4}
+            letterSpacing={1.7}
           >
             <textPath href="#edge-globe-label-arc" startOffset="50%" textAnchor="middle">
               NODE EDGE CDN / GLOBAL
