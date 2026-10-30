@@ -17,12 +17,14 @@ export function RegisterForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending(true);
     setError(null);
+    setFieldErrors({});
 
     if (password !== confirmPassword) {
       const message = "Passwords do not match.";
@@ -41,11 +43,25 @@ export function RegisterForm() {
 
       const payload = (await response.json()) as {
         data?: { verificationEmailSent?: boolean };
-        error?: { message?: string };
+        error?: { message?: string; details?: { path?: string; message?: string }[] };
       };
 
       if (!response.ok) {
-        const message = payload.error?.message ?? "Could not create the account.";
+        const details = payload.error?.details ?? [];
+        const nextFieldErrors: Record<string, string> = {};
+
+        for (const detail of details) {
+          if (detail.path && detail.message) {
+            nextFieldErrors[detail.path] = detail.message;
+          }
+        }
+
+        setFieldErrors(nextFieldErrors);
+
+        // The API sends a generic message for validation failures, so prefer the
+        // first field-level issue to tell the user what actually went wrong.
+        const message =
+          details[0]?.message ?? payload.error?.message ?? "Could not create the account.";
         setError(message);
         toast.error(message);
         return;
@@ -89,6 +105,9 @@ export function RegisterForm() {
               placeholder="yourname"
               required
             />
+            {fieldErrors.username ? (
+              <p className="text-xs text-red-400">{fieldErrors.username}</p>
+            ) : null}
           </div>
 
           <div className="space-y-2">
@@ -103,6 +122,9 @@ export function RegisterForm() {
               placeholder="you@example.com"
               required
             />
+            {fieldErrors.email ? (
+              <p className="text-xs text-red-400">{fieldErrors.email}</p>
+            ) : null}
           </div>
 
           <div className="space-y-2">
@@ -116,6 +138,11 @@ export function RegisterForm() {
               onChange={(event) => setPassword(event.target.value)}
               required
             />
+            {fieldErrors.password ? (
+              <p className="text-xs text-red-400">{fieldErrors.password}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">At least 10 characters.</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -129,6 +156,9 @@ export function RegisterForm() {
               onChange={(event) => setConfirmPassword(event.target.value)}
               required
             />
+            {fieldErrors.confirmPassword ? (
+              <p className="text-xs text-red-400">{fieldErrors.confirmPassword}</p>
+            ) : null}
           </div>
 
           {error ? (
