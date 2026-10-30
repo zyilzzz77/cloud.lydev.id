@@ -51,7 +51,27 @@ const envSchema = z.object({
   R2_CDN_BUCKET: z.string().default("lydev-cdn"),
   R2_FILES_BUCKET: z.string().default("lydev-files"),
   R2_CDN_DOMAIN: z.string().default("cdn.lydev.id"),
-  STORAGE_PRIMARY: z.enum(["r2", "cos"]).default("r2"),
+
+  /**
+   * Generic S3-compatible storage (AWS S3, MinIO, Backblaze B2, Wasabi …).
+   * Leave S3_ENDPOINT empty for AWS; set it for any other S3-compatible host.
+   * CDN and private file objects can share one bucket or use two separate ones.
+   */
+  S3_REGION: z.string().default(""),
+  S3_ENDPOINT: z.string().default(""),
+  S3_ACCESS_KEY_ID: z.string().default(""),
+  S3_SECRET_ACCESS_KEY: z.string().default(""),
+  S3_SESSION_TOKEN: z.string().default(""),
+  S3_BUCKET: z.string().default(""),
+  S3_CDN_BUCKET: z.string().default(""),
+  S3_FILES_BUCKET: z.string().default(""),
+  S3_PUBLIC_BASE_URL: z.string().default(""),
+  S3_FORCE_PATH_STYLE: z
+    .string()
+    .default("false")
+    .transform((value) => value.trim().toLowerCase() === "true"),
+
+  STORAGE_PRIMARY: z.enum(["r2", "cos", "s3"]).default("r2"),
 
   CLOUDFLARE_API_TOKEN: z
     .string()

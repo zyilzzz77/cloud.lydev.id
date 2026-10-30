@@ -7,5 +7,7 @@ describe("env", () => {
     expect(env.JWT_SECRET.length).toBeGreaterThanOrEqual(32);
     expect(env.SESSION_TTL_DAYS).toBeGreaterThan(0);
     expect(env.STORAGE_QUOTA_BYTES).toBeGreaterThan(0);
+    expect(["r2", "cos", "s3"]).toContain(env.STORAGE_PRIMARY);
+    expect(typeof env.S3_FORCE_PATH_STYLE).toBe("boolean");
   });
 });

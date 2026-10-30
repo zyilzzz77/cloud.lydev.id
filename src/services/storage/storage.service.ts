@@ -443,6 +443,136 @@ class CosStorageDriver implements StorageDriver {
   }
 }
 
+class S3StorageDriver implements StorageDriver {
+  private readonly client: S3Client;
+  private readonly cdnBucket: string;
+  private readonly filesBucket: string;
+  private readonly publicBase: string | null;
+  private readonly region: string;
+
+  constructor() {
+    this.region = env.S3_REGION || "us-east-1";
+    this.client = new S3Client({
+      region: this.region,
+      // Empty endpoint means real AWS S3; any other host (MinIO, B2, Wasabi)
+      // needs its endpoint set here.
+      ...(env.S3_ENDPOINT ? { endpoint: env.S3_ENDPOINT } : {}),
+      forcePathStyle: env.S3_FORCE_PATH_STYLE,
+      credentials: {
+        accessKeyId: env.S3_ACCESS_KEY_ID,
+        secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+        ...(env.S3_SESSION_TOKEN ? { sessionToken: env.S3_SESSION_TOKEN } : {}),
+      },
+    });
+    // One bucket for both, unless the CDN and private files use separate ones.
+    this.cdnBucket = env.S3_CDN_BUCKET || env.S3_BUCKET;
+    this.filesBucket = env.S3_FILES_BUCKET || env.S3_BUCKET;
+    this.publicBase = env.S3_PUBLIC_BASE_URL || null;
+  }
+
+  private bucketFor(key: string): string {
+    return key.startsWith("files/") ? this.filesBucket : this.cdnBucket;
+  }
+
+  async createUploadTarget(
+    key: string,
+    mimeType: string,
+    sizeBytes: number,
+    expiresInSeconds: number,
+  ): Promise<UploadTarget> {
+    const command = new PutObjectCommand({
+      Bucket: this.bucketFor(key),
+      Key: key,
+      ContentType: mimeType,
+      // SigV4 covers content-length, so a body of another size fails the
+      // signature instead of landing in the bucket.
+      ContentLength: sizeBytes,
+      CacheControl: key.startsWith("files/")
+        ? "private, no-store"
+        : "public, max-age=31536000, immutable",
+    });
+
+    const url = await getSignedUrl(this.client, command, { expiresIn: expiresInSeconds });
+
+    return {
+      url,
+      method: "PUT",
+      headers: { "Content-Type": mimeType },
+      expiresAt: new Date(Date.now() + expiresInSeconds * 1000).toISOString(),
+    };
+  }
+
+  async createDownloadTarget(
+    key: string,
+    filename: string,
+    expiresInSeconds: number,
+  ): Promise<string> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucketFor(key),
+      Key: key,
+      ResponseContentDisposition: `attachment; filename="${filename.replace(/["\\]/g, "")}"`,
+    });
+
+    return getSignedUrl(this.client, command, { expiresIn: expiresInSeconds });
+  }
+
+  publicUrl(key: string): string {
+    if (key.startsWith("files/")) {
+      throw new AppError("INTERNAL_ERROR", "Private objects do not have a public URL.", 500);
+    }
+
+    // Custom domain / CloudFront when set, otherwise the AWS virtual-hosted URL.
+    const base = this.publicBase
+      ? this.publicBase.startsWith("http")
+        ? this.publicBase
+        : `https://${this.publicBase}`
+      : `https://${this.cdnBucket}.s3.${this.region}.amazonaws.com`;
+
+    return `${base.replace(/\/+$/, "")}/${key.replace(/^\/+/, "")}`;
+  }
+
+  async headObject(key: string): Promise<ObjectInfo | null> {
+    try {
+      const result = await this.client.send(
+        new HeadObjectCommand({ Bucket: this.bucketFor(key), Key: key }),
+      );
+
+      return {
+        sizeBytes: result.ContentLength ?? 0,
+        contentType: result.ContentType ?? null,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async getObjectStream(key: string): Promise<ObjectStream | null> {
+    try {
+      const result = await this.client.send(
+        new GetObjectCommand({ Bucket: this.bucketFor(key), Key: key }),
+      );
+
+      if (!result.Body) {
+        return null;
+      }
+
+      return {
+        sizeBytes: result.ContentLength ?? 0,
+        contentType: result.ContentType ?? null,
+        stream: result.Body as Readable,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async deleteObject(key: string): Promise<void> {
+    await this.client.send(
+      new DeleteObjectCommand({ Bucket: this.bucketFor(key), Key: key }),
+    );
+  }
+}
+
 class CompositeStorageDriver implements StorageDriver {
   constructor(
     private readonly primary: StorageDriver,
@@ -530,36 +660,41 @@ export function getStorage(): StorageDriver {
       env.COS_REGION &&
       env.COS_ENDPOINT,
   );
-  const r2Driver = r2Configured ? new R2StorageDriver() : null;
-  const cosDriver = cosConfigured ? new CosStorageDriver() : null;
+  const s3Configured = Boolean(
+    env.S3_ACCESS_KEY_ID &&
+      env.S3_SECRET_ACCESS_KEY &&
+      (env.S3_BUCKET || (env.S3_CDN_BUCKET && env.S3_FILES_BUCKET)),
+  );
 
-  if (r2Driver && cosDriver) {
-    const useCosPrimary = env.STORAGE_PRIMARY === "cos";
-    driver = useCosPrimary
-      ? new CompositeStorageDriver(cosDriver, r2Driver)
-      : new CompositeStorageDriver(r2Driver, cosDriver);
+  const candidates: { id: "r2" | "cos" | "s3"; driver: StorageDriver }[] = [];
+
+  if (r2Configured) {
+    candidates.push({ id: "r2", driver: new R2StorageDriver() });
+  }
+
+  if (cosConfigured) {
+    candidates.push({ id: "cos", driver: new CosStorageDriver() });
+  }
+
+  if (s3Configured) {
+    candidates.push({ id: "s3", driver: new S3StorageDriver() });
+  }
+
+  if (candidates.length === 0) {
+    if (env.NODE_ENV === "production") {
+      throw new AppError("SERVICE_UNAVAILABLE", "Object storage is not configured.", 503);
+    }
+
+    driver = new LocalStorageDriver();
     return driver;
   }
 
-  if (env.STORAGE_PRIMARY === "cos" && cosDriver) {
-    driver = cosDriver;
-    return driver;
-  }
+  const primary = candidates.find((entry) => entry.id === env.STORAGE_PRIMARY) ?? candidates[0]!;
+  const secondary = candidates.find((entry) => entry.id !== primary.id);
 
-  if (r2Driver) {
-    driver = r2Driver;
-    return driver;
-  }
+  driver = secondary
+    ? new CompositeStorageDriver(primary.driver, secondary.driver)
+    : primary.driver;
 
-  if (cosDriver) {
-    driver = cosDriver;
-    return driver;
-  }
-
-  if (env.NODE_ENV === "production") {
-    throw new AppError("SERVICE_UNAVAILABLE", "Object storage is not configured.", 503);
-  }
-
-  driver = new LocalStorageDriver();
   return driver;
 }

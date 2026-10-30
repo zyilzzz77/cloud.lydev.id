@@ -86,7 +86,13 @@ R2_CDN_DOMAIN=cdn.lydev.id
 ```
 
 `CLOUDFLARE_API_TOKEN` with Zone Cache Purge is used to invalidate `cdn.lydev.id` when an asset is
-deleted. Tencent COS and the `.uploads/` filesystem remain available as fallbacks.
+deleted. Tencent COS, any S3-compatible provider, and the `.uploads/` filesystem remain available as
+fallbacks.
+
+Any S3-compatible backend (AWS S3, MinIO, Backblaze B2, Wasabi …) can replace R2 by setting the
+`S3_*` variables in `.env.local` and `STORAGE_PRIMARY=s3`. R2 and COS already speak the S3 API, so
+the same driver handles all three — the one real difference is cost: AWS S3 charges for egress while
+R2 egress is free, which matters for the transfer-based pricing below.
 
 ## Plans and boost packs
 
