@@ -138,13 +138,13 @@ export function EdgeGlobe({ className }: { className?: string }) {
         <div className="pointer-events-none absolute inset-x-0 top-0 aspect-square rounded-full bg-[radial-gradient(circle_at_50%_50%,currentColor_0%,transparent_68%)] text-foreground opacity-[0.08] blur-2xl animate-[eg-breathe_9s_ease-in-out_infinite] motion-reduce:animate-none" />
 
         <svg
-          viewBox="0 0 200 226"
+          viewBox="-12 0 224 236"
           className="relative h-auto w-full text-foreground"
           aria-hidden="true"
           focusable="false"
         >
           <defs>
-            <path id="edge-globe-label-arc" d="M 34 204 A 140 140 0 0 1 166 204" fill="none" />
+            <path id="edge-globe-label-arc" d="M 40 224 A 170 170 0 0 1 160 224" fill="none" />
           </defs>
 
           {/* Sphere silhouette. */}
@@ -202,8 +202,8 @@ export function EdgeGlobe({ className }: { className?: string }) {
             className="fill-muted-foreground"
             fillOpacity={0.85}
             fontFamily="var(--font-geist-mono), ui-monospace, monospace"
-            fontSize={6.5}
-            letterSpacing={1.95}
+            fontSize={7}
+            letterSpacing={2.1}
           >
             <textPath href="#edge-globe-label-arc" startOffset="50%" textAnchor="middle">
               NODE EDGE CDN / GLOBAL

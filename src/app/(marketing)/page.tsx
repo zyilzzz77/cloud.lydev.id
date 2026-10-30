@@ -193,7 +193,7 @@ export default async function HomePage() {
             </span>
 
             <h1
-              className="animate-rise mt-5 max-w-2xl font-dot text-4xl leading-[1.1] tracking-tight text-foreground sm:text-5xl lg:text-6xl"
+              className="animate-rise mt-5 max-w-2xl text-balance font-dot text-4xl leading-[1.15] tracking-tight text-foreground sm:text-5xl lg:text-6xl"
               style={{ animationDelay: "80ms" }}
             >
               Simpan di Satu Tempat, Akses Ngebut dari Mana Saja.
