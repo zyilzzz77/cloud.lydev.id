@@ -5,4 +5,4 @@ Description=Lydev Cloud Postgres backup
 Type=oneshot
 EnvironmentFile=/srv/lydev-cloud/.env
 Environment=BACKUP_DIR=/var/backups/lydev-cloud
-ExecStart=/srv/lydev-cloud/scripts/backup-db.sh
+ExecStart=/bin/bash /srv/lydev-cloud/scripts/backup-db.sh
