@@ -19,8 +19,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      # Needed so the build can reach the native Postgres during prerendering.
-      network: host
       args:
         # NEXT_PUBLIC_* are inlined at build time. Values come from .env.
         APP_URL: ${APP_URL:-https://cloud.lydev.id}
