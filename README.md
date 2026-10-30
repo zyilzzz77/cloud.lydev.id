@@ -231,13 +231,40 @@ redirects and downloads do not currently increment the in-app click/download ana
 
 ## Deployment
 
-1. Build with `pnpm build` and copy `.next/standalone`, `.next/static`, and `public` to
-   `/srv/lydev-cloud`.
+Postgres, Redis, and clamd stay native on the VPS. Only the app and Caddy run in containers, and
+both use host networking so the app keeps reaching `127.0.0.1` and the `Caddyfile` needs no
+changes.
+
+### Docker Compose (default)
+
+1. Install Docker Engine with the Compose plugin on the VPS.
+2. Clone the repo to `/srv/lydev-cloud` and copy `.env.example` to `/srv/lydev-cloud/.env`,
+   then fill every production value. `APP_URL` and the three `NEXT_PUBLIC_*` URLs are inlined at
+   build time — change them and rebuild, restarting the container is not enough.
+3. Stop any Caddy already bound to `:80`/`:443` on the host, then:
+
+```bash
+docker compose build
+docker compose up -d
+```
+
+4. `docker compose ps` should report the app as healthy (`GET /api/health`). Follow logs with
+   `docker compose logs -f app`.
+5. Keep the cleanup timer from `deploy/` — it runs `pnpm worker:cleanup` from the same checkout,
+   outside the container.
+6. Configure Cloudflare DNS, cache rules, WAF, and the R2 custom domain as described in the
+   architecture document.
+7. Schedule `scripts/backup-db.sh` with cron or a systemd timer.
+
+Caddy keeps its certificates in the `caddy_data` volume and writes `/var/log/caddy/lydev.log`
+to `caddy_logs`; both survive `docker compose down`. The local storage fallback writes to
+`/app/.uploads` on the `uploads` volume.
+
+### Bare metal (systemd)
+
+1. Build with `pnpm build` and copy `.next/standalone` and `.next/static` to `/srv/lydev-cloud`.
 2. Copy `.env.example` to `/srv/lydev-cloud/.env` and fill every production value.
 3. Install the systemd units from `deploy/` and enable the cleanup timer.
 4. Point Caddy at `127.0.0.1:3000` using the provided `Caddyfile`.
-5. Configure Cloudflare DNS, cache rules, WAF, and the R2 custom domain as described in the
-   architecture document.
-6. Schedule `scripts/backup-db.sh` with cron or a systemd timer.
 
 Never commit `.env`, credentials, presigned URLs, or the `.pgdata` directory.

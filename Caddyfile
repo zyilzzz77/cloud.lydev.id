@@ -22,7 +22,8 @@ cloud.lydev.id, uri.lydev.id, dl.lydev.id {
         max_size 2MB
     }
 
-    reverse_proxy 127.0.0.1:3000 {
+    # Override with APP_UPSTREAM when the app is not reachable on loopback.
+    reverse_proxy {$APP_UPSTREAM:127.0.0.1:3000} {
         # Replace, never append: a client-supplied X-Forwarded-For must not
         # reach the app, where it would key the rate limiters.
         header_up X-Real-IP {client_ip}

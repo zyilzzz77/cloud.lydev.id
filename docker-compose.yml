@@ -1,0 +1,91 @@
+# Docker deployment for cloud.lydev.id.
+#
+# Both services use host networking on purpose: Postgres, Redis and clamd stay
+# native on the VPS, and the app must keep reaching them over 127.0.0.1 exactly
+# like deploy/lydev-cloud.service does today. It also keeps the Caddyfile
+# unchanged (reverse_proxy 127.0.0.1:3000) and the rate limiter's X-Real-IP
+# behaviour intact.
+
+name: lydev-cloud
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Needed so the build can reach the native Postgres during prerendering.
+      network: host
+      args:
+        # NEXT_PUBLIC_* are inlined at build time. Values come from .env.
+        APP_URL: ${APP_URL:-https://cloud.lydev.id}
+        NEXT_PUBLIC_CDN_URL: ${NEXT_PUBLIC_CDN_URL:-https://cdn.lydev.id}
+        NEXT_PUBLIC_SHORT_URL: ${NEXT_PUBLIC_SHORT_URL:-https://uri.lydev.id}
+        NEXT_PUBLIC_DL_URL: ${NEXT_PUBLIC_DL_URL:-https://dl.lydev.id}
+        # Only satisfies src/lib/env.ts validation during the build.
+        DATABASE_URL: ${DATABASE_URL:-postgresql://build:build@127.0.0.1:5432/build}
+        JWT_SECRET: ${JWT_SECRET:-build-only-placeholder-000000000000000000}
+    image: lydev-cloud:${APP_VERSION:-latest}
+    restart: unless-stopped
+    network_mode: host
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 127.0.0.1
+    volumes:
+      # Local storage driver fallback (src/services/storage/storage.service.ts).
+      - uploads:/app/.uploads
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - 'fetch("http://127.0.0.1:3000/api/health").then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))'
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    stop_grace_period: 30s
+    logging: *logging
+
+  # One-off maintenance container: `docker compose run --rm tools pnpm db:migrate`
+  tools:
+    profiles: ["tools"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: tools
+    image: lydev-cloud-tools:${APP_VERSION:-latest}
+    network_mode: host
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+    logging: *logging
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      app:
+        condition: service_healthy
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      - caddy_logs:/var/log/caddy
+    logging: *logging
+
+volumes:
+  uploads:
+  caddy_data:
+  caddy_config:
+  caddy_logs:

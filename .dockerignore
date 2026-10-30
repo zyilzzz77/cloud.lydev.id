@@ -1,0 +1,28 @@
+# dependencies and build output
+node_modules
+.next
+out
+build
+coverage
+*.tsbuildinfo
+
+# secrets and local state — never bake these into an image
+.env
+.env.*
+!.env.example
+.pgdata
+.uploads
+*.log
+
+# repository noise
+.git
+.github
+.codebuddy
+.commandcode
+artifacts
+playwright-report
+test-results
+tests
+docs
+*.png
+README.md
