@@ -8,7 +8,7 @@ import { PLANS, PLAN_ORDER } from "@/lib/plans";
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: "Storage and monthly transfer plans, with bandwidth top-ups when a month runs hot.",
+  description: "Storage and monthly transfer plans, with one-time boost packs when a month runs hot.",
 };
 
 export default async function PricingPage() {
@@ -79,11 +79,12 @@ export default async function PricingPage() {
         </p>
         <p>
           Every plan includes a monthly transfer allowance: 10 GB on Free, 100 GB on Starter, and
-          500 GB on Pro. Transfer resets on the first of each month.
+          500 GB on Pro. Transfer resets on the first of each month. Free files expire after 7 days;
+          paid plans keep them permanently.
         </p>
         <p>
-          Need more in a single month? Bandwidth top-ups start at Rp 7.000 and expire with the
-          billing month. For steady traffic, a plan upgrade is cheaper per GB.
+          Need more in a single month? Boost packs start at Rp 9.900 and add both storage and
+          transfer, expiring with the billing month. For steady traffic, a plan upgrade is cheaper.
         </p>
       </div>
     </div>

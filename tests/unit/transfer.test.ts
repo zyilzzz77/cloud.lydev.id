@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PLANS } from "@/lib/plans";
-import { exceedsTransfer, transferPeriodStart, transferUsage } from "@/lib/transfer";
+import { exceedsTransfer, monthBonus, transferPeriodStart, transferUsage } from "@/lib/transfer";
 
 const GB = 1024 ** 3;
 
@@ -59,6 +59,16 @@ describe("transfer window", () => {
 
     expect(usage.bonusBytes).toBe(0);
     expect(usage.limitBytes).toBe(10 * GB);
+  });
+
+  it("only counts a monthly bonus inside its own month", () => {
+    expect(
+      monthBonus(50 * GB, new Date("2026-10-01T00:00:00Z"), new Date("2026-10-20T00:00:00Z")),
+    ).toBe(50 * GB);
+    expect(
+      monthBonus(50 * GB, new Date("2026-09-01T00:00:00Z"), new Date("2026-10-20T00:00:00Z")),
+    ).toBe(0);
+    expect(monthBonus(50 * GB, undefined, new Date("2026-10-20T00:00:00Z"))).toBe(0);
   });
 
   it("blocks only when the request would cross the cap", () => {

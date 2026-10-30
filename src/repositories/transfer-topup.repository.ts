@@ -7,6 +7,7 @@ export interface NewTransferTopUp {
   userId: string;
   topUpId: string;
   bytes: number;
+  storageBytes: number;
   priceIdr: number;
 }
 

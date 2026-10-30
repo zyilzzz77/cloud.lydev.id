@@ -2,21 +2,14 @@ import type { Metadata } from "next";
 import { Clock } from "lucide-react";
 import { PlanCard } from "@/components/billing/plan-card";
 import { StorageMeter } from "@/components/layout/storage-meter";
+import { BoostPacksSection } from "@/components/settings/boost-packs";
 import { PlanUpgradeButton } from "@/components/settings/plan-upgrade-button";
-import { TransferTopUpButton } from "@/components/settings/transfer-topup-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { requireSessionUser } from "@/lib/api/auth-guard";
-import {
-  PLANS,
-  PLAN_ORDER,
-  TRANSFER_TOPUPS,
-  formatPlanPrice,
-  planFor,
-  transferTopUpPerGb,
-} from "@/lib/plans";
+import { PLANS, PLAN_ORDER, formatPlanPrice, planFor } from "@/lib/plans";
 import { formatBytes, formatDate } from "@/lib/utils";
 import { getPlanOverview } from "@/services/billing/plan.service";
 
@@ -53,6 +46,12 @@ export default async function PlanSettingsPage() {
             usedBytes={overview.storageUsedBytes}
             quotaBytes={overview.storageQuotaBytes}
           />
+          {overview.storageBonusBytes > 0 ? (
+            <p className="text-xs text-muted-foreground">
+              Includes {formatBytes(overview.storageBonusBytes)} storage from boost packs. Resets
+              next month.
+            </p>
+          ) : null}
 
           <dl className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-lg border border-border/60 p-3 sm:col-span-2">
@@ -139,46 +138,21 @@ export default async function PlanSettingsPage() {
             <Clock className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
             <div className="space-y-1 text-sm">
               <p className="font-medium text-foreground">
-                {overview.pendingTopUp.label} transfer pack requested
+                {overview.pendingTopUp.label} boost pack requested
               </p>
               <p className="text-muted-foreground">
-                {formatPlanPrice(overview.pendingTopUp.priceIdr)} · submitted{" "}
-                {formatDate(overview.pendingTopUp.createdAt)}. The extra transfer is added once the
-                payment is confirmed.
+                {formatPlanPrice(overview.pendingTopUp.priceIdr)} · +{" "}
+                {formatBytes(overview.pendingTopUp.storageBytes)} storage · +{" "}
+                {formatBytes(overview.pendingTopUp.bytes)} transfer · submitted{" "}
+                {formatDate(overview.pendingTopUp.createdAt)}. Both are added once payment is
+                confirmed.
               </p>
             </div>
           </CardContent>
         </Card>
       ) : null}
 
-      <section className="space-y-3">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-sm font-medium text-foreground">Need more transfer?</h2>
-          <p className="text-xs text-muted-foreground">
-            Top-ups last one month. Plans are cheaper per GB.
-          </p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {TRANSFER_TOPUPS.map((topUp) => (
-            <div key={topUp.id} className="border border-border/70 bg-card/40 p-4">
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                {topUp.label}
-              </p>
-              <p className="mt-1 text-lg font-semibold tracking-tight text-foreground">
-                {formatPlanPrice(topUp.priceIdr)}
-              </p>
-              <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
-                {formatPlanPrice(transferTopUpPerGb(topUp))}/GB
-              </p>
-              <TransferTopUpButton
-                topUpId={topUp.id}
-                label={topUp.label}
-                disabled={Boolean(overview.pendingTopUp) || Boolean(pending)}
-              />
-            </div>
-          ))}
-        </div>
-      </section>
+      <BoostPacksSection disabled={Boolean(overview.pendingTopUp) || Boolean(pending)} />
 
       <section className="space-y-3">
         <h2 className="text-sm font-medium text-foreground">Available plans</h2>

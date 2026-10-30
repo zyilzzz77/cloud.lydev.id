@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { dlFiles, users, type DlFileRow, type UserRow } from "@/db/schema";
 import { AppError } from "@/lib/errors";
 import { env } from "@/lib/env";
+import { FREE_FILE_RETENTION_DAYS, planFor } from "@/lib/plans";
 import { createDlAccessToken, verifyDlAccessToken } from "@/lib/dl-access";
 import { isRiskyExtension, validateDlUploadMeta } from "@/lib/file-validator";
 import { createDlFileId } from "@/lib/id-generator";
@@ -85,6 +86,20 @@ function expiryFromDays(days: number | null | undefined): Date | null {
   }
 
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+}
+
+/**
+ * Free uploads are capped at FREE_FILE_RETENTION_DAYS so dead storage never
+ * piles up. Paid plans keep whatever the caller asked for (including forever).
+ */
+function effectiveDlExpiry(user: UserRow, days: number | null | undefined): Date | null {
+  if (planFor(user.plan).id !== "free") {
+    return expiryFromDays(days);
+  }
+
+  const capped = days && days > 0 ? Math.min(days, FREE_FILE_RETENTION_DAYS) : FREE_FILE_RETENTION_DAYS;
+
+  return expiryFromDays(capped);
 }
 
 function toEdgeMeta(row: DlFileRow): DlEdgeMeta {
@@ -225,7 +240,7 @@ export async function completeDlUpload(
         scanEngine: scan.engine,
         scanDetail: scan.detail,
         scannedAt: new Date(),
-        expiresAt: expiryFromDays(input.expiresInDays),
+        expiresAt: effectiveDlExpiry(user, input.expiresInDays),
       })
       .returning();
 
@@ -306,7 +321,10 @@ export async function updateDlFileForUser(
   const patch: DlFileSettingsPatch = {};
 
   if (input.expiresInDays !== undefined) {
-    patch.expiresAt = expiryFromDays(input.expiresInDays);
+    const owner = await findUserById(userId);
+    patch.expiresAt = owner
+      ? effectiveDlExpiry(owner, input.expiresInDays)
+      : expiryFromDays(input.expiresInDays);
   }
 
   if (input.password !== undefined) {

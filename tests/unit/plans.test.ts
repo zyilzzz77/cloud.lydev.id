@@ -68,16 +68,22 @@ describe("plans", () => {
     }
   });
 
-  it("keeps a top-up more expensive than upgrading to Starter", () => {
-    const hundred = findTransferTopUp("bw-100");
+  it("bundles storage and transfer into every boost pack", () => {
+    for (const pack of TRANSFER_TOPUPS) {
+      expect(pack.storageBytes).toBeGreaterThan(0);
+      expect(pack.bytes).toBeGreaterThan(0);
+      expect(pack.priceIdr).toBeGreaterThan(0);
+    }
+  });
 
-    expect(hundred).not.toBeNull();
-    // 100 GB of top-up must cost more than Starter, which includes the same
-    // transfer plus 25 GB of storage, otherwise nobody upgrades.
-    expect(hundred!.priceIdr).toBeGreaterThan(PLANS.starter.priceIdr);
+  it("prices boost packs with attractive charm prices", () => {
+    expect(findTransferTopUp("boost-10")!.priceIdr).toBe(9_900);
+    expect(findTransferTopUp("boost-25")!.priceIdr).toBe(24_000);
+    expect(findTransferTopUp("boost-50")!.priceIdr).toBe(49_000);
+    expect(findTransferTopUp("boost-100")!.priceIdr).toBe(99_000);
   });
 
   it("rejects unknown top-up ids", () => {
-    expect(findTransferTopUp("bw-9999")).toBeNull();
+    expect(findTransferTopUp("boost-9999")).toBeNull();
   });
 });

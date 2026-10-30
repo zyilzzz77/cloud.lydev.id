@@ -3,6 +3,7 @@ import type { UserRow } from "@/db/schema";
 import { AppError } from "@/lib/errors";
 import { findTransferTopUp, isPaidPlanId, type PlanId } from "@/lib/plans";
 import { transferFor } from "@/services/storage/transfer.service";
+import { monthBonus } from "@/lib/transfer";
 import { listApiKeys } from "@/repositories/api-key.repository";
 import { listCdnBuckets } from "@/repositories/cdn-bucket.repository";
 import { createPlanRequest, findPendingPlanRequest } from "@/repositories/plan-request.repository";
@@ -17,6 +18,7 @@ export interface PendingTopUp {
   topUpId: string;
   label: string;
   bytes: number;
+  storageBytes: number;
   priceIdr: number;
   createdAt: string;
 }
@@ -25,6 +27,8 @@ export interface PlanOverview {
   plan: PlanId;
   storageUsedBytes: number;
   storageQuotaBytes: number;
+  /** Storage from approved boost packs for the current month. */
+  storageBonusBytes: number;
   bucketCount: number;
   activeApiKeyCount: number;
   transferUsedBytes: number;
@@ -35,7 +39,7 @@ export interface PlanOverview {
   pendingTopUp: PendingTopUp | null;
 }
 
-export async function getPlanOverview(user: UserRow): Promise<PlanOverview> {
+export async function getPlanOverview(user: UserRow, now = new Date()): Promise<PlanOverview> {
   const [buckets, keys, pending, pendingTopUp] = await Promise.all([
     listCdnBuckets(user.id),
     listApiKeys(user.id),
@@ -43,12 +47,14 @@ export async function getPlanOverview(user: UserRow): Promise<PlanOverview> {
     findPendingTransferTopUp(user.id),
   ]);
 
-  const transfer = transferFor(user);
+  const transfer = transferFor(user, now);
+  const storageBonusBytes = monthBonus(user.storageBonusBytes, user.storageBonusPeriodStart, now);
 
   return {
     plan: user.plan,
     storageUsedBytes: user.storageUsedBytes,
-    storageQuotaBytes: user.storageQuotaBytes,
+    storageQuotaBytes: user.storageQuotaBytes + storageBonusBytes,
+    storageBonusBytes,
     bucketCount: buckets.length,
     activeApiKeyCount: keys.filter((key) => !key.revokedAt).length,
     transferUsedBytes: transfer.usedBytes,
@@ -60,6 +66,7 @@ export async function getPlanOverview(user: UserRow): Promise<PlanOverview> {
           topUpId: pendingTopUp.topUpId,
           label: findTransferTopUp(pendingTopUp.topUpId)?.label ?? pendingTopUp.topUpId,
           bytes: pendingTopUp.bytes,
+          storageBytes: pendingTopUp.storageBytes,
           priceIdr: pendingTopUp.priceIdr,
           createdAt: pendingTopUp.createdAt.toISOString(),
         }

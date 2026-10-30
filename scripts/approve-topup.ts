@@ -26,8 +26,8 @@ async function main(): Promise<void> {
   const sql = postgres(databaseUrl, { max: 1 });
 
   try {
-    const rows = await sql<{ id: string; email: string; transfer_bonus_bytes: number }[]>`
-      select id, email, transfer_bonus_bytes from users
+    const rows = await sql<{ id: string; email: string; transfer_bonus_bytes: number; storage_bonus_bytes: number }[]>`
+      select id, email, transfer_bonus_bytes, storage_bonus_bytes from users
       where email = ${identifier.trim().toLowerCase()} or username = ${identifier.trim().toLowerCase()}
       limit 1
     `;
@@ -40,13 +40,13 @@ async function main(): Promise<void> {
     }
 
     const pending = topUpId
-      ? await sql<{ id: string; top_up_id: string; bytes: number; price_idr: number }[]>`
-          select id, top_up_id, bytes, price_idr from transfer_topups
+      ? await sql<{ id: string; top_up_id: string; bytes: number; storage_bytes: number; price_idr: number }[]>`
+          select id, top_up_id, bytes, storage_bytes, price_idr from transfer_topups
           where user_id = ${user.id} and status = 'pending' and top_up_id = ${topUpId}
           order by created_at desc limit 1
         `
-      : await sql<{ id: string; top_up_id: string; bytes: number; price_idr: number }[]>`
-          select id, top_up_id, bytes, price_idr from transfer_topups
+      : await sql<{ id: string; top_up_id: string; bytes: number; storage_bytes: number; price_idr: number }[]>`
+          select id, top_up_id, bytes, storage_bytes, price_idr from transfer_topups
           where user_id = ${user.id} and status = 'pending'
           order by created_at desc limit 1
         `;
@@ -78,13 +78,19 @@ async function main(): Promise<void> {
               else ${topUp.bytes}
             end,
             transfer_bonus_period_start = ${period}::timestamptz,
+            storage_bonus_bytes = case
+              when storage_bonus_period_start >= ${period}::timestamptz
+                then storage_bonus_bytes + ${topUp.storage_bytes}
+              else ${topUp.storage_bytes}
+            end,
+            storage_bonus_period_start = ${period}::timestamptz,
             updated_at = now()
         where id = ${user.id}
       `;
     });
 
     console.log(
-      `${user.email}: +${formatBytes(topUp.bytes)} transfer approved (Rp ${topUp.price_idr.toLocaleString("id-ID")}).`,
+      `${user.email}: +${formatBytes(topUp.bytes)} transfer and +${formatBytes(topUp.storage_bytes)} storage approved (Rp ${topUp.price_idr.toLocaleString("id-ID")}).`,
     );
   } finally {
     await sql.end();

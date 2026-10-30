@@ -88,33 +88,36 @@ R2_CDN_DOMAIN=cdn.lydev.id
 `CLOUDFLARE_API_TOKEN` with Zone Cache Purge is used to invalidate `cdn.lydev.id` when an asset is
 deleted. Tencent COS and the `.uploads/` filesystem remain available as fallbacks.
 
-## Plans and bandwidth top-ups
+## Plans and boost packs
 
 Transfer is metered per UTC month and resets automatically; there is no manual reset. When a plan
-runs out mid-month the account can either upgrade or buy a one-month bandwidth top-up.
+runs out mid-month the account can either upgrade or buy a one-time boost pack.
 
 | Plan | Storage | Transfer / month | Price |
 | --- | --- | --- | --- |
-| Free | 5 GB | 10 GB | Rp 0 |
+| Free | 2 GB | 10 GB | Rp 0 |
 | Starter | 25 GB | 100 GB | Rp 39.000 |
 | Pro | 100 GB | 500 GB | Rp 99.000 |
 
-| Top-up | Price | Per GB |
-| --- | --- | --- |
-| 10 GB | Rp 7.000 | Rp 700 |
-| 50 GB | Rp 29.000 | Rp 580 |
-| 100 GB | Rp 49.000 | Rp 490 |
-| 500 GB | Rp 199.000 | Rp 398 |
+Free uploads expire after 7 days; paid plans keep files permanently.
 
-Top-ups are deliberately worse value than a plan upgrade: 100 GB of top-up costs more than Starter,
-which also adds storage and renews every month. They exist for a one-off spike, not as a substitute.
+| Boost | Storage | Transfer | Price |
+| --- | --- | --- | --- |
+| Boost 10 | +10 GB | +50 GB | Rp 9.900 |
+| Boost 25 | +25 GB | +150 GB | Rp 24.000 |
+| Boost 50 | +50 GB | +400 GB | Rp 49.000 |
+| Boost 100 | +100 GB | +1 TB | Rp 99.000 |
 
-A top-up is recorded as a `transfer_topups` row with status `pending`; approving it adds the bytes to
-`users.transfer_bonus_bytes` for the current UTC month only. Approve from the CLI:
+Boost packs add storage and transfer for the current UTC month only, with charm prices so they read
+as a deal. They are one-time; a plan is cheaper for steady traffic and renews every month.
+
+A pack is recorded as a `transfer_topups` row with status `pending`; approving it adds the transfer
+to `users.transfer_bonus_bytes` and the storage to `users.storage_bonus_bytes`, both for the current
+UTC month only. Approve from the CLI:
 
 ```powershell
 pnpm topup:approve lydev
-pnpm topup:approve lydev bw-50
+pnpm topup:approve lydev boost-50
 ```
 
 ## Malware scanning

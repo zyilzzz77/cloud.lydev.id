@@ -30,6 +30,7 @@ export async function requestTransferTopUp(
     userId: user.id,
     topUpId: topUp.id,
     bytes: topUp.bytes,
+    storageBytes: topUp.storageBytes,
     priceIdr: topUp.priceIdr,
   });
 

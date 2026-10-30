@@ -26,6 +26,9 @@ export interface Plan {
 
 const GB = 1024 ** 3;
 
+/** Free uploads expire after this many days; paid plans keep files permanently. */
+export const FREE_FILE_RETENTION_DAYS = 7;
+
 /**
  * Single source of truth for what each plan is allowed to do.
  * Every guard reads from here — never hard-code a limit at a call site.
@@ -37,7 +40,7 @@ export const PLANS: Record<PlanId, Plan> = {
     tagline: "Start without a card.",
     priceIdr: 0,
     limits: {
-      storageBytes: 5 * GB,
+      storageBytes: 2 * GB,
       maxBuckets: 3,
       maxApiKeys: 3,
       urlsPerHour: 30,
@@ -45,7 +48,7 @@ export const PLANS: Record<PlanId, Plan> = {
       transferBytesPerMonth: 10 * GB,
     },
     features: [
-      "5 GB storage",
+      "2 GB storage",
       "10 GB transfer per month",
       "CDN, short links, and file sharing",
       "3 buckets and 3 API keys",
@@ -104,21 +107,23 @@ export const PLAN_ORDER: readonly PlanId[] = ["free", "starter", "pro"];
 export interface TransferTopUp {
   id: string;
   label: string;
+  /** Extra storage the pack unlocks for the month it is bought in. */
+  storageBytes: number;
+  /** Extra monthly transfer the pack unlocks. */
   bytes: number;
   priceIdr: number;
 }
 
 /**
- * Bandwidth sold outside the monthly plans. Priced per GB above what a plan
- * charges, so a heavy month is always cheaper as a plan upgrade: 100 GB of
- * top-up costs more than Starter, which also adds storage and resets monthly.
- * A top-up only lasts for the month it was bought in.
+ * One-time "boost" packs sold outside the monthly plans. Each adds storage AND
+ * transfer for the month it is bought in, with charm pricing (9.900, 24.000 …)
+ * so it reads as a deal next to a plan upgrade. A pack only lasts for the month.
  */
 export const TRANSFER_TOPUPS: readonly TransferTopUp[] = [
-  { id: "bw-10", label: "10 GB", bytes: 10 * GB, priceIdr: 7_000 },
-  { id: "bw-50", label: "50 GB", bytes: 50 * GB, priceIdr: 29_000 },
-  { id: "bw-100", label: "100 GB", bytes: 100 * GB, priceIdr: 49_000 },
-  { id: "bw-500", label: "500 GB", bytes: 500 * GB, priceIdr: 199_000 },
+  { id: "boost-10", label: "Boost 10", storageBytes: 10 * GB, bytes: 50 * GB, priceIdr: 9_900 },
+  { id: "boost-25", label: "Boost 25", storageBytes: 25 * GB, bytes: 150 * GB, priceIdr: 24_000 },
+  { id: "boost-50", label: "Boost 50", storageBytes: 50 * GB, bytes: 400 * GB, priceIdr: 49_000 },
+  { id: "boost-100", label: "Boost 100", storageBytes: 100 * GB, bytes: 1024 * GB, priceIdr: 99_000 },
 ];
 
 export function findTransferTopUp(id: string): TransferTopUp | null {

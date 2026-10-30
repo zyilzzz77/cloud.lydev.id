@@ -4,7 +4,8 @@ import { users } from "./users.schema";
 
 /**
  * A bandwidth purchase that sits outside the monthly plan. Approved rows add
- * their bytes to users.transfer_bonus_bytes for the current month only.
+ * their transfer and storage bytes to the matching users bonus columns for the
+ * current month only.
  */
 export const transferTopUps = pgTable(
   "transfer_topups",
@@ -15,6 +16,7 @@ export const transferTopUps = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     topUpId: varchar("top_up_id", { length: 32 }).notNull(),
     bytes: bigint("bytes", { mode: "number" }).notNull(),
+    storageBytes: bigint("storage_bytes", { mode: "number" }).notNull().default(0),
     priceIdr: integer("price_idr").notNull(),
     status: planRequestStatusEnum("status").notNull().default("pending"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

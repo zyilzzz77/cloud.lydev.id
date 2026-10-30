@@ -25,7 +25,7 @@ export function TransferTopUpButton({ topUpId, label, disabled }: TransferTopUpB
         method: "POST",
         body: JSON.stringify({ topUpId }),
       });
-      toast.success(`${label} transfer pack requested.`);
+      toast.success(`${label} boost pack requested.`);
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not record the request.");

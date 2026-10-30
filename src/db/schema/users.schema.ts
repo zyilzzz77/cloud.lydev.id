@@ -21,6 +21,11 @@ export const users = pgTable("users", {
   transferBonusPeriodStart: timestamp("transfer_bonus_period_start", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  /** Storage bought on top of the plan. Only valid for the period below. */
+  storageBonusBytes: bigint("storage_bonus_bytes", { mode: "number" }).notNull().default(0),
+  storageBonusPeriodStart: timestamp("storage_bonus_period_start", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
   sessionVersion: integer("session_version").notNull().default(0),
   /** Null until the signup code is confirmed. */
   emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
