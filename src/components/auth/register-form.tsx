@@ -74,10 +74,13 @@ export function RegisterForm() {
             placeholder="yourname"
             className={authInputClass}
             aria-invalid={Boolean(fieldErrors.username)}
+            aria-describedby={fieldErrors.username ? "username-error" : undefined}
             required
           />
           {fieldErrors.username ? (
-            <p className="text-xs text-red-600 dark:text-red-400">{fieldErrors.username}</p>
+            <p id="username-error" className="text-xs text-red-600 dark:text-red-400">
+              {fieldErrors.username}
+            </p>
           ) : null}
         </div>
 
@@ -95,10 +98,13 @@ export function RegisterForm() {
             placeholder="you@example.com"
             className={authInputClass}
             aria-invalid={Boolean(fieldErrors.email)}
+            aria-describedby={fieldErrors.email ? "email-error" : undefined}
             required
           />
           {fieldErrors.email ? (
-            <p className="text-xs text-red-600 dark:text-red-400">{fieldErrors.email}</p>
+            <p id="email-error" className="text-xs text-red-600 dark:text-red-400">
+              {fieldErrors.email}
+            </p>
           ) : null}
         </div>
 

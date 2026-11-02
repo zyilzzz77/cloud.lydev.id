@@ -1,30 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useShareShortLink } from "@/hooks/use-short-urls";
+import { copyText } from "@/lib/clipboard";
 import type { ShareVisibility } from "@/types/share.types";
 
 type CopyTarget = string;
-
-function fallbackCopy(value: string) {
-  const textarea = document.createElement("textarea");
-  textarea.value = value;
-  textarea.style.position = "fixed";
-  textarea.style.opacity = "0";
-  document.body.appendChild(textarea);
-  textarea.select();
-  document.execCommand("copy");
-  textarea.remove();
-}
-
-async function copyValue(value: string) {
-  try {
-    await navigator.clipboard.writeText(value);
-  } catch {
-    fallbackCopy(value);
-  }
-}
 
 interface UseShareDialogOptions {
   url: string;
@@ -41,13 +23,35 @@ export function useShareDialog({ url, signedEndpoint, visibility }: UseShareDial
   const [signed, setSigned] = useState<{ url: string; expiresAt: string } | null>(null);
   const [signingLink, setSigningLink] = useState(false);
   const [pendingVisibility, setPendingVisibility] = useState<ShareVisibility | null>(null);
+  const resetTimer = useRef<number | null>(null);
   const shortenLink = useShareShortLink();
 
+  useEffect(
+    () => () => {
+      if (resetTimer.current) {
+        window.clearTimeout(resetTimer.current);
+      }
+    },
+    [],
+  );
+
   async function handleCopy(target: CopyTarget, value: string) {
-    await copyValue(value);
+    try {
+      await copyText(value);
+    } catch {
+      toast.error("Could not copy to clipboard.");
+      return;
+    }
+
     setCopied(target);
     toast.success("Link copied.");
-    window.setTimeout(() => setCopied(null), 1500);
+
+    // Clearing the previous timer keeps a fast second copy from losing its
+    // checkmark to the first copy's timeout.
+    if (resetTimer.current) {
+      window.clearTimeout(resetTimer.current);
+    }
+    resetTimer.current = window.setTimeout(() => setCopied(null), 1500);
   }
 
   async function handleCreateShortUrl() {

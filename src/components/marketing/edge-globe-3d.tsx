@@ -8,6 +8,7 @@ import { feature } from "topojson-client";
 import landData from "world-atlas/land-110m.json";
 import type { Feature, FeatureCollection, MultiPolygon, Polygon, Position } from "geojson";
 import type { Topology } from "topojson-specification";
+import type { Mesh, MeshBasicMaterial } from "three";
 import {
   AdditiveBlending,
   BackSide,
@@ -16,10 +17,8 @@ import {
   CubicBezierCurve3,
   DoubleSide,
   MathUtils,
-  Mesh,
   NormalBlending,
   PerspectiveCamera,
-  MeshBasicMaterial,
   Quaternion,
   SRGBColorSpace,
   Vector3,
@@ -193,24 +192,50 @@ const atmosphereFragmentShader = [
 ].join("\n");
 
 function Earth({ dark }: { dark: boolean }) {
-  const texture = useMemo(() => createLandTexture(dark), [dark]);
+  const [texture, setTexture] = useState<CanvasTexture | null>(null);
   const atmosphereUniforms = useMemo(() => ({
     glowColor: { value: new Color(dark ? "#38bdf8" : BLUE) },
     glowStrength: { value: dark ? 0.55 : 0.14 },
   }), [dark]);
 
-  useEffect(() => () => texture.dispose(), [texture]);
+  // Painting the 2048x1024 dot matrix blocks the main thread for a beat. Yield a
+  // frame first so the plain sphere paints, then swap in the texture.
+  useEffect(() => {
+    let cancelled = false;
+    let created: CanvasTexture | null = null;
+
+    const frame = window.requestAnimationFrame(() => {
+      created = createLandTexture(dark);
+
+      if (cancelled) {
+        created.dispose();
+        return;
+      }
+
+      setTexture(created);
+    });
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+      created?.dispose();
+    };
+  }, [dark]);
 
   return (
     <group>
       <mesh>
         <sphereGeometry args={[GLOBE_RADIUS, 128, 96]} />
+        {/* Re-keying the material rebuilds the shader once the map exists; a
+            plain prop update would leave USE_MAP out of the compiled program. */}
         <meshStandardMaterial
-          map={texture}
+          key={texture ? "land" : "plain"}
+          map={texture ?? undefined}
+          color={texture ? "#ffffff" : dark ? "#0d2a41" : "#dbeafe"}
           roughness={0.86}
           metalness={dark ? 0.12 : 0.02}
-          emissiveMap={texture}
-          emissive={dark ? "#1d4d6e" : "#dbeafe"}
+          emissiveMap={texture ?? undefined}
+          emissive={texture ? (dark ? "#1d4d6e" : "#dbeafe") : "#000000"}
           emissiveIntensity={dark ? 0.28 : 0.62}
         />
       </mesh>
@@ -374,20 +399,52 @@ function ResponsiveCamera() {
   return null;
 }
 
-function updateBadge(
-  element: HTMLDivElement,
-  values: { x: number; y: number; width: number; height: number; scale: number; isFront: boolean; isHovered: boolean },
-) {
-  const { x, y, width, height, scale, isFront, isHovered } = values;
-  const halfWidth = element.offsetWidth / 2;
-  const halfHeight = element.offsetHeight / 2;
-  const safeX = MathUtils.clamp(x, halfWidth + 8, width - halfWidth - 8);
-  const safeY = MathUtils.clamp(y, halfHeight + 8, height - halfHeight - 8);
-  element.style.transform = "translate3d(" + safeX + "px," + safeY + "px,0) translate(-50%,-50%) scale(" + scale + ")";
+type BadgeLayout = {
+  x: number;
+  y: number;
+  viewportWidth: number;
+  viewportHeight: number;
+  badgeWidth: number;
+  badgeHeight: number;
+  scale: number;
+  isFront: boolean;
+  isHovered: boolean;
+};
+
+function updateBadge(element: HTMLDivElement, layout: BadgeLayout) {
+  const {
+    x,
+    y,
+    viewportWidth,
+    viewportHeight,
+    badgeWidth,
+    badgeHeight,
+    scale,
+    isFront,
+    isHovered,
+  } = layout;
+  const halfWidth = badgeWidth / 2;
+  const halfHeight = badgeHeight / 2;
+  const safeX = MathUtils.clamp(
+    x,
+    halfWidth + 8,
+    Math.max(halfWidth + 8, viewportWidth - halfWidth - 8),
+  );
+  const safeY = MathUtils.clamp(
+    y,
+    halfHeight + 8,
+    Math.max(halfHeight + 8, viewportHeight - halfHeight - 8),
+  );
+
+  element.style.transform =
+    "translate3d(" + safeX + "px," + safeY + "px,0) translate(-50%,-50%) scale(" + scale + ")";
   element.style.opacity = isFront ? "1" : "0";
   element.style.visibility = isFront ? "visible" : "hidden";
   element.style.pointerEvents = isFront ? "auto" : "none";
   element.style.zIndex = isHovered ? "30" : "10";
+  // `inert` is what actually keeps a badge on the far side of the globe out of
+  // the tab order and the accessibility tree.
+  element.inert = !isFront;
   element.setAttribute("aria-hidden", String(!isFront));
 }
 
@@ -411,7 +468,17 @@ function BadgeProjector({
     [],
   );
 
+  // Reading offsetWidth every frame forces a synchronous layout per badge, so
+  // measure once and only re-measure when the viewport actually changes.
+  const sizes = useRef<Record<string, { width: number; height: number }>>({});
+  const viewport = useRef({ width: 0, height: 0 });
+
   useFrame(({ camera, size }) => {
+    if (viewport.current.width !== size.width || viewport.current.height !== size.height) {
+      viewport.current = { width: size.width, height: size.height };
+      sizes.current = {};
+    }
+
     const cameraDirection = camera.position.clone().normalize();
     const frontBadges: Array<{
       element: HTMLDivElement;
@@ -426,23 +493,38 @@ function BadgeProjector({
       const element = badgeRefs.current[node.id];
       if (!element) continue;
 
+      let measured = sizes.current[node.id];
+      if (!measured) {
+        measured = { width: element.offsetWidth, height: element.offsetHeight };
+        sizes.current[node.id] = measured;
+      }
+
       const projected = badgePosition.clone().project(camera);
       const isFront = normal.dot(cameraDirection) > 0.05 && projected.z > -1 && projected.z < 1;
       const isHovered = hovered === node.id;
       if (!isFront && isHovered) onHover(null);
 
       if (!isFront) {
-        updateBadge(element, { x: 0, y: 0, width: size.width, height: size.height, scale: 0.85, isFront: false, isHovered: false });
+        updateBadge(element, {
+          x: 0,
+          y: 0,
+          viewportWidth: size.width,
+          viewportHeight: size.height,
+          badgeWidth: measured.width,
+          badgeHeight: measured.height,
+          scale: 0.85,
+          isFront: false,
+          isHovered: false,
+        });
         continue;
       }
 
-      const scale = isHovered ? 1.08 : 1;
       frontBadges.push({
         element,
         x: (projected.x * 0.5 + 0.5) * size.width,
         y: (-projected.y * 0.5 + 0.5) * size.height,
-        width: element.offsetWidth * scale,
-        height: element.offsetHeight * scale,
+        width: measured.width * (isHovered ? 1.08 : 1),
+        height: measured.height * (isHovered ? 1.08 : 1),
         isHovered,
       });
     }
@@ -472,8 +554,10 @@ function BadgeProjector({
       updateBadge(badge.element, {
         x: badge.x,
         y,
-        width: size.width,
-        height: size.height,
+        viewportWidth: size.width,
+        viewportHeight: size.height,
+        badgeWidth: badge.width,
+        badgeHeight: badge.height,
         scale: badge.isHovered ? 1.08 : 1,
         isFront: true,
         isHovered: badge.isHovered,
@@ -590,7 +674,6 @@ export default function EdgeGlobe3D() {
             key={node.id}
             ref={(element) => { badgeRefs.current[node.id] = element; }}
             data-region={node.id}
-            aria-hidden="true"
             className="invisible absolute left-0 top-0 opacity-0 transition-[opacity] duration-200 will-change-transform"
           >
             <div

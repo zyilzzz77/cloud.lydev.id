@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Check, ChevronDown, Copy, Globe, Loader2, Lock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,9 +36,11 @@ export function ShareVisibilityField({
   busy: boolean;
   onChange: (next: ShareVisibility) => void;
 }) {
+  const selectId = useId();
+
   return (
     <div className="mt-4 space-y-2">
-      <label htmlFor="share-visibility" className="text-xs font-medium text-muted-foreground">
+      <label htmlFor={selectId} className="text-xs font-medium text-muted-foreground">
         Who can access
       </label>
       <div className="relative">
@@ -51,7 +54,7 @@ export function ShareVisibilityField({
           )}
         </span>
         <select
-          id="share-visibility"
+          id={selectId}
           value={value}
           disabled={busy}
           onChange={(event) => onChange(event.target.value as ShareVisibility)}

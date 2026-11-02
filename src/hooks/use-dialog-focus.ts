@@ -5,6 +5,11 @@ import { useEffect, useRef, type RefObject } from "react";
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+// Shared across every dialog so a nested modal cannot unlock body scrolling when
+// it closes while its parent is still open.
+let scrollLocks = 0;
+let overflowBeforeLock = "";
+
 /**
  * Shared modal behaviour: lock body scroll, trap Tab, close on Escape, and
  * return focus to the trigger on unmount.
@@ -26,8 +31,11 @@ export function useDialogFocus(
       return;
     }
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (scrollLocks === 0) {
+      overflowBeforeLock = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+    }
+    scrollLocks += 1;
     const trigger =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
@@ -72,7 +80,10 @@ export function useDialogFocus(
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
+      scrollLocks = Math.max(0, scrollLocks - 1);
+      if (scrollLocks === 0) {
+        document.body.style.overflow = overflowBeforeLock;
+      }
       window.removeEventListener("keydown", handleKeyDown);
       trigger?.focus();
     };

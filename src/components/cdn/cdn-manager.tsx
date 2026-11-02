@@ -66,8 +66,16 @@ export function CdnManager() {
       return;
     }
 
+    // Deleting the only asset on a page leaves it empty, so step back a page.
+    const emptiesPage = (query.data?.items.length ?? 0) === 1 && filters.page > 1;
+
     try {
       await remove.mutateAsync(asset.id);
+
+      if (emptiesPage) {
+        setFilters((current) => ({ ...current, page: Math.max(1, current.page - 1) }));
+      }
+
       toast.success("Asset deleted.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Delete failed.");
@@ -155,7 +163,12 @@ export function CdnManager() {
             onPrevious={() =>
               setFilters((current) => ({ ...current, page: current.page - 1 }))
             }
-            onNext={() => setFilters((current) => ({ ...current, page: current.page + 1 }))}
+            onNext={() =>
+              setFilters((current) => ({
+                ...current,
+                page: Math.min(current.page + 1, totalPages),
+              }))
+            }
           />
         </CardContent>
       </Card>

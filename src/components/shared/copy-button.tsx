@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 
 export function CopyButton({
@@ -16,13 +17,29 @@ export function CopyButton({
   className?: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const resetTimer = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (resetTimer.current) {
+        window.clearTimeout(resetTimer.current);
+      }
+    },
+    [],
+  );
 
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText(value);
+      await copyText(value);
       setCopied(true);
       toast.success("Copied to clipboard.");
-      window.setTimeout(() => setCopied(false), 1500);
+
+      // Clearing the previous timer keeps a fast second copy from losing its
+      // checkmark to the first copy's timeout.
+      if (resetTimer.current) {
+        window.clearTimeout(resetTimer.current);
+      }
+      resetTimer.current = window.setTimeout(() => setCopied(false), 1500);
     } catch {
       toast.error("Could not copy to clipboard.");
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { AlertCircle, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -73,8 +73,10 @@ function GoogleIcon({ className }: { className?: string }) {
 }
 
 export function GoogleSignInButton() {
-  // OAuth is not wired yet, so the control stays visibly unavailable instead of
-  // pretending to work. The toast explains the state for anyone who clicks.
+  const noteId = useId();
+
+  // OAuth is not wired yet. The button stays focusable and answers with a toast
+  // instead of claiming aria-disabled while still handling clicks.
   function handleClick() {
     toast.info("Google sign-in is coming soon.");
   }
@@ -83,15 +85,18 @@ export function GoogleSignInButton() {
     <div className="relative">
       <button
         type="button"
-        aria-disabled="true"
+        aria-describedby={noteId}
         title="Google sign-in is coming soon."
         onClick={handleClick}
-        className="flex h-11 w-full cursor-not-allowed items-center justify-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm font-medium text-slate-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-400 dark:focus-visible:ring-offset-slate-900"
+        className="flex h-11 w-full items-center justify-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm font-medium text-slate-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-400 dark:focus-visible:ring-offset-slate-900"
       >
         <GoogleIcon className="h-[18px] w-[18px] opacity-60" />
         Continue with Google
       </button>
-      <span className="pointer-events-none absolute -top-2 right-3 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+      <span
+        id={noteId}
+        className="pointer-events-none absolute -top-2 right-3 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+      >
         Coming soon
       </span>
     </div>
