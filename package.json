@@ -19,7 +19,8 @@
     "topup:approve": "cross-env NODE_ENV=development tsx scripts/approve-topup.ts",
     "worker:cleanup": "cross-env NODE_ENV=development NODE_OPTIONS=--conditions=react-server tsx scripts/worker-cleanup.ts",
     "cloudflare:cdn": "node scripts/cloudflare-cdn-setup.mjs",
-    "worker:deploy": "node scripts/deploy-worker.mjs"
+    "worker:deploy": "node scripts/deploy-worker.mjs",
+    "status:check": "cross-env NODE_ENV=production NODE_OPTIONS=--conditions=react-server tsx scripts/status-check.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1156.0",

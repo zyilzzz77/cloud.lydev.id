@@ -68,6 +68,27 @@ services:
       NODE_ENV: production
     logging: *logging
 
+  # Health-check scheduler: probes the four public hosts every 60 seconds so the
+  # activity page stays truthful even when nobody has it open. Reuses the tools
+  # image, which already carries the source and devDependencies.
+  monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: tools
+    image: lydev-cloud-tools:${APP_VERSION:-latest}
+    restart: unless-stopped
+    network_mode: host
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+    command:
+      - sh
+      - -c
+      - while true; do pnpm status:check || true; sleep 60; done
+    logging: *logging
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
