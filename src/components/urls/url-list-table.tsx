@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
-import { BarChart3, ExternalLink, Loader2, Power, Trash2 } from "lucide-react";
-import { ShareButton } from "@/components/shared/share-button";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { formatDate } from "@/lib/utils";
+import { ExternalLink } from "lucide-react";
+import { CopyButton } from "@/components/shared/copy-button";
+import { UrlRowActions } from "@/components/urls/url-row-actions";
+import { UrlStatusBadge } from "@/components/urls/url-status-badge";
+import { formatDate, formatDateOnly } from "@/lib/utils";
+import { stripProtocol } from "@/lib/urls";
 import type { ShortUrlDto } from "@/types/url.types";
 
 interface UrlListTableProps {
@@ -25,94 +25,86 @@ export function UrlListTable({
 }: UrlListTableProps) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[820px] text-left text-sm">
-        <thead className="border-b border-border text-xs uppercase tracking-wider text-muted-foreground">
-          <tr>
-            <th className="px-3 py-2 font-medium">Short link</th>
-            <th className="px-3 py-2 font-medium">Destination</th>
-            <th className="px-3 py-2 font-medium">Clicks</th>
-            <th className="px-3 py-2 font-medium">Status</th>
-            <th className="px-3 py-2 font-medium">Created</th>
-            <th className="px-3 py-2 text-right font-medium">Actions</th>
+      <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+        <thead>
+          <tr className="border-b border-border/70 text-[11px] uppercase tracking-wider text-muted-foreground">
+            <th className="px-4 py-2.5 font-medium">Short link</th>
+            <th className="px-4 py-2.5 font-medium">Destination</th>
+            <th className="w-20 px-4 py-2.5 text-right font-medium">Clicks</th>
+            <th className="w-28 px-4 py-2.5 font-medium">Status</th>
+            <th className="w-32 px-4 py-2.5 font-medium">Created</th>
+            <th className="w-24 px-4 py-2.5 text-right font-medium">Actions</th>
           </tr>
         </thead>
         <tbody>
           {items.map((item) => (
-            <tr key={item.id} className="border-b border-border/60 last:border-0">
-              <td className="px-3 py-3">
+            <tr
+              key={item.id}
+              className="border-b border-border/50 transition-colors last:border-0 hover:bg-muted/30"
+            >
+              <td className="px-4 py-3">
                 <div className="flex items-center gap-1">
-                  <span className="max-w-[200px] truncate font-mono text-xs text-foreground">
-                    {item.shortUrl}
+                  <span
+                    className="max-w-[220px] truncate font-mono text-xs font-medium text-foreground"
+                    title={item.shortUrl}
+                  >
+                    {stripProtocol(item.shortUrl)}
                   </span>
-                  <ShareButton
-                    url={item.shortUrl}
-                    title="Share short link"
-                    variant="ghost"
-                    className="h-8 px-2"
+                  <CopyButton
+                    value={item.shortUrl}
+                    label="Copy short link"
+                    className="h-7 w-7 shrink-0"
                   />
                 </div>
-                <p className="max-w-[220px] truncate text-xs text-muted-foreground">
-                  {item.title ?? item.slug}
-                </p>
+                {item.title ? (
+                  <p className="mt-0.5 max-w-[240px] truncate text-xs text-muted-foreground">
+                    {item.title}
+                  </p>
+                ) : null}
               </td>
-              <td className="px-3 py-3">
+
+              <td className="px-4 py-3">
                 <a
                   href={item.targetUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex max-w-[280px] items-center gap-1 truncate text-xs text-muted-foreground hover:text-foreground"
+                  title={item.targetUrl}
+                  className="group flex max-w-[260px] items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  <span className="truncate">{item.targetUrl}</span>
-                  <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="min-w-0 truncate">{stripProtocol(item.targetUrl)}</span>
+                  <ExternalLink
+                    className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+                    aria-hidden="true"
+                  />
                 </a>
               </td>
-              <td className="px-3 py-3 font-mono text-xs text-foreground">{item.clicks}</td>
-              <td className="px-3 py-3">
-                <Badge variant={item.isActive ? "default" : "outline"}>
-                  {item.isActive ? "active" : "disabled"}
-                </Badge>
+
+              <td className="px-4 py-3 text-right font-mono text-xs tabular-nums text-foreground">
+                {item.clicks.toLocaleString()}
               </td>
-              <td className="px-3 py-3 text-xs text-muted-foreground">
-                {formatDate(item.createdAt)}
+
+              <td className="px-4 py-3">
+                <UrlStatusBadge active={item.isActive} />
               </td>
-              <td className="px-3 py-3">
-                <div className="flex items-center justify-end gap-1">
-                  <Link
-                    href={`/dashboard/urls/${item.id}`}
-                    aria-label="View analytics"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  >
-                    <BarChart3 className="h-4 w-4" aria-hidden="true" />
-                  </Link>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={item.isActive ? "Disable link" : "Enable link"}
-                    disabled={updatingId === item.id}
-                    onClick={() => onToggle(item)}
-                    className="h-8 w-8"
-                  >
-                    {updatingId === item.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <Power className="h-4 w-4" aria-hidden="true" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Delete link"
-                    disabled={deletingId === item.id}
-                    onClick={() => onDelete(item)}
-                    className="h-8 w-8 text-muted-foreground hover:text-red-400"
-                  >
-                    {deletingId === item.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" aria-hidden="true" />
-                    )}
-                  </Button>
-                </div>
+
+              <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">
+                <time
+                  dateTime={item.createdAt}
+                  title={formatDate(item.createdAt)}
+                  className="cursor-help underline decoration-border decoration-dotted underline-offset-4"
+                >
+                  {formatDateOnly(item.createdAt)}
+                </time>
+              </td>
+
+              <td className="px-4 py-3">
+                <UrlRowActions
+                  item={item}
+                  deleting={deletingId === item.id}
+                  updating={updatingId === item.id}
+                  onDelete={onDelete}
+                  onToggle={onToggle}
+                />
               </td>
             </tr>
           ))}

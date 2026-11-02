@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Clock } from "lucide-react";
 import { PlanCard } from "@/components/billing/plan-card";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { getSessionUser } from "@/lib/api/auth-guard";
 import { PLANS, PLAN_ORDER } from "@/lib/plans";
 
@@ -17,7 +18,13 @@ export default async function PricingPage() {
   return (
     <div className="mx-auto w-full max-w-6xl px-6 py-16 md:py-24">
       <div className="max-w-2xl space-y-3">
-        <Badge>Pricing</Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge>Pricing</Badge>
+          <Badge variant="outline" className="gap-1">
+            <Clock className="h-3 w-3" aria-hidden="true" />
+            Self-serve upgrades coming soon
+          </Badge>
+        </div>
         <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
           Every tool in one account. Pick the size.
         </h1>
@@ -45,25 +52,24 @@ export default async function PricingPage() {
                   >
                     Manage plan
                   </Link>
+                ) : plan.priceIdr > 0 ? (
+                  <Button variant="outline" className="w-full" disabled>
+                    <Clock className="h-4 w-4" aria-hidden="true" />
+                    Coming soon
+                  </Button>
                 ) : user ? (
                   <Link
                     href="/dashboard/settings/plan"
-                    className={buttonVariants({
-                      variant: plan.highlight ? "default" : "outline",
-                      className: "w-full",
-                    })}
+                    className={buttonVariants({ variant: "outline", className: "w-full" })}
                   >
-                    {plan.priceIdr === 0 ? "View plan" : "Upgrade"}
+                    View plan
                   </Link>
                 ) : (
                   <Link
                     href="/register"
-                    className={buttonVariants({
-                      variant: plan.highlight ? "default" : "outline",
-                      className: "w-full",
-                    })}
+                    className={buttonVariants({ variant: "outline", className: "w-full" })}
                   >
-                    {plan.priceIdr === 0 ? "Start free" : "Get started"}
+                    Start free
                   </Link>
                 )
               }
@@ -74,8 +80,8 @@ export default async function PricingPage() {
 
       <div className="mt-10 space-y-2 rounded-xl border border-border/70 bg-card/40 p-5 text-sm text-muted-foreground">
         <p>
-          Prices are in Indonesian Rupiah per month. Upgrades are confirmed manually after payment
-          — you will see the request status on your plan page.
+          Prices are in Indonesian Rupiah per month. Self-serve upgrades are coming soon — until
+          then, every account stays on the Free plan.
         </p>
         <p>
           Every plan includes a monthly transfer allowance: 10 GB on Free, 100 GB on Starter, and
@@ -83,8 +89,8 @@ export default async function PricingPage() {
           paid plans keep them permanently.
         </p>
         <p>
-          Need more in a single month? Boost packs start at Rp 9.900 and add both storage and
-          transfer, expiring with the billing month. For steady traffic, a plan upgrade is cheaper.
+          Need more in a single month? Boost packs will start at Rp 9.900 and add both storage and
+          transfer, expiring with the billing month. Billing is coming soon.
         </p>
       </div>
     </div>

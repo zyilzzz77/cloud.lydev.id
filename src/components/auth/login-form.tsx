@@ -5,16 +5,27 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, LogIn } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AuthCard,
+  AuthDivider,
+  AuthError,
+  GoogleSignInButton,
+  PasswordVisibilityToggle,
+  authInputClass,
+  authLinkClass,
+  primaryButtonClass,
+} from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { safeRedirectPath } from "@/lib/urls";
 
 export function LoginForm({ nextPath }: { nextPath: string }) {
   const router = useRouter();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -61,64 +72,89 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
   }
 
   return (
-    <Card>
-      <CardHeader className="space-y-1">
-        <CardTitle as="h1" className="text-xl">
-          Sign in
-        </CardTitle>
-        <CardDescription>Use your email or username to access the dashboard.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form className="space-y-4" onSubmit={handleSubmit} noValidate>
-          <div className="space-y-2">
-            <Label htmlFor="identifier">Email or username</Label>
-            <Input
-              id="identifier"
-              name="identifier"
-              autoComplete="username"
-              value={identifier}
-              onChange={(event) => setIdentifier(event.target.value)}
-              placeholder="you@example.com"
-              required
-            />
+    <AuthCard
+      title="Sign in"
+      description="Use your email or username to access the dashboard."
+      footer={
+        <>
+          New user?{" "}
+          <Link href="/register" className={authLinkClass}>
+            Create an account
+          </Link>
+        </>
+      }
+    >
+      <GoogleSignInButton />
+      <AuthDivider />
+
+      <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+        <div className="space-y-2">
+          <Label
+            htmlFor="identifier"
+            className="text-sm font-medium text-slate-700 dark:text-slate-300"
+          >
+            Email or username
+          </Label>
+          <Input
+            id="identifier"
+            name="identifier"
+            autoComplete="username"
+            value={identifier}
+            onChange={(event) => setIdentifier(event.target.value)}
+            placeholder="you@example.com or yourname"
+            className={authInputClass}
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <Label
+              htmlFor="password"
+              className="text-sm font-medium text-slate-700 dark:text-slate-300"
+            >
+              Password
+            </Label>
+            <Link href="/forgot-password" className={cn("text-xs", authLinkClass)}>
+              Forgot password?
+            </Link>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+          <div className="relative">
             <Input
               id="password"
               name="password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               autoComplete="current-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              placeholder="••••••••"
+              className={cn(authInputClass, "pr-11")}
               required
             />
+            <PasswordVisibilityToggle
+              visible={showPassword}
+              onToggle={() => setShowPassword((visible) => !visible)}
+            />
           </div>
+        </div>
 
-          {error ? (
-            <p role="alert" className="text-sm text-red-400">
-              {error}
-            </p>
-          ) : null}
+        {error ? <AuthError message={error} /> : null}
 
-          <Button type="submit" className="w-full" disabled={pending}>
-            {pending ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <LogIn className="h-4 w-4" aria-hidden="true" />
-            )}
-            {pending ? "Signing in" : "Sign in"}
-          </Button>
-        </form>
-
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          New user?{" "}
-          <Link href="/register" className="font-medium text-primary hover:underline">
-            Create an account
-          </Link>
-        </p>
-      </CardContent>
-    </Card>
+        <Button
+          type="submit"
+          className={primaryButtonClass}
+          disabled={pending}
+          aria-busy={pending}
+        >
+          {pending ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <LogIn className="h-4 w-4" aria-hidden="true" />
+          )}
+          {pending ? "Signing in" : "Sign in"}
+        </Button>
+      </form>
+    </AuthCard>
   );
 }

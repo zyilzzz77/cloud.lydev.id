@@ -7,10 +7,10 @@ import { cn } from "@/lib/utils";
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-6">
+      <div className="relative mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
         <Brand />
 
-        <nav aria-label="Primary" className="hidden items-center gap-6 text-sm md:flex">
+        <nav aria-label="Primary" className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 text-sm lg:flex">
           <Link href="/#features" className="text-muted-foreground transition-colors hover:text-foreground">
             Fitur
           </Link>
@@ -19,12 +19,6 @@ export function SiteHeader() {
           </Link>
           <Link href="/docs/api" className="text-muted-foreground transition-colors hover:text-foreground">
             Dokumentasi
-          </Link>
-          <Link href="/terms" className="text-muted-foreground transition-colors hover:text-foreground">
-            Syarat & Ketentuan
-          </Link>
-          <Link href="/privacy" className="text-muted-foreground transition-colors hover:text-foreground">
-            Privasi
           </Link>
         </nav>
 

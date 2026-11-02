@@ -100,3 +100,19 @@ export function formatDate(value: Date | string): string {
 
   return `${formatted} WIB`;
 }
+
+/** Date without the time, e.g. "29 Oct 2026". */
+export function formatDateOnly(value: Date | string): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+
+  if (Number.isNaN(date.getTime())) {
+    return "Unknown";
+  }
+
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: DISPLAY_TIME_ZONE,
+  }).format(date);
+}

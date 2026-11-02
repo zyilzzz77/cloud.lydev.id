@@ -1,16 +1,17 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { Link2, Loader2, Search } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link2, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { UrlCreateForm } from "@/components/urls/url-create-form";
+import { UrlCreateDialog } from "@/components/urls/url-create-dialog";
 import { UrlListTable } from "@/components/urls/url-list-table";
+import { UrlPagination } from "@/components/urls/url-pagination";
+import { UrlSearchBar } from "@/components/urls/url-search-bar";
 import { useConfirm } from "@/components/shared/confirm-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ErrorState } from "@/components/shared/error-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   useDeleteShortUrl,
@@ -21,6 +22,7 @@ import {
 import type { ShortUrlDto } from "@/types/url.types";
 
 const PAGE_SIZE = 10;
+const SEARCH_DEBOUNCE_MS = 300;
 
 export function UrlManager() {
   const dialog = useConfirm();
@@ -30,13 +32,31 @@ export function UrlManager() {
     q: "",
   });
   const [search, setSearch] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
   const query = useShortUrls(filters);
   const remove = useDeleteShortUrl();
   const update = useUpdateShortUrl();
 
-  function handleSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  // Filter as the user types. The functional update keeps the current page when
+  // the trimmed query has not actually changed.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setFilters((current) => {
+        const q = search.trim();
+        return current.q === q ? current : { ...current, page: 1, q };
+      });
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  function submitSearch() {
     setFilters((current) => ({ ...current, page: 1, q: search.trim() }));
+  }
+
+  function handleClearSearch() {
+    setSearch("");
+    setFilters((current) => ({ ...current, page: 1, q: "" }));
   }
 
   async function handleDelete(item: ShortUrlDto) {
@@ -72,53 +92,52 @@ export function UrlManager() {
   const total = query.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / filters.limit));
   const updatingId = update.isPending ? (update.variables?.id ?? null) : null;
+  const isSearching = filters.q.length > 0;
+  const summary = isSearching
+    ? `${total} result${total === 1 ? "" : "s"} for “${filters.q}”`
+    : `${total} link${total === 1 ? "" : "s"} in your account.`;
 
   return (
-    <div className="space-y-4">
-      <UrlCreateForm />
-
+    <>
       <Card>
-        <CardHeader className="gap-4">
-          <div className="space-y-1">
-            <CardTitle>Links</CardTitle>
-            <CardDescription>
-              {total} link{total === 1 ? "" : "s"} in your account.
-            </CardDescription>
-          </div>
-          <form onSubmit={handleSearch} className="flex gap-2">
-            <div className="relative flex-1">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search by slug, title, or destination"
-                className="pl-9"
-                aria-label="Search links"
-              />
+        <CardHeader className="gap-4 border-b border-border/70">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-1">
+              <CardTitle>Links</CardTitle>
+              <CardDescription>{summary}</CardDescription>
             </div>
-            <Button type="submit" variant="outline">
-              Search
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Create Link
             </Button>
-          </form>
+          </div>
+
+          <UrlSearchBar
+            value={search}
+            fetching={query.isFetching && !query.isPending}
+            onChange={setSearch}
+            onSubmit={submitSearch}
+            onClear={handleClearSearch}
+          />
         </CardHeader>
-        <CardContent>
+
+        <CardContent className="p-0">
           {query.isPending ? (
-            <div className="space-y-2">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <Skeleton key={index} className="h-12 w-full" />
+            <div className="space-y-2 p-4">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Skeleton key={index} className="h-11 w-full" />
               ))}
             </div>
           ) : query.isError ? (
-            <ErrorState
-              title="Links could not load"
-              description={query.error instanceof Error ? query.error.message : undefined}
-              action={<Button onClick={() => void query.refetch()}>Retry</Button>}
-            />
+            <div className="p-4">
+              <ErrorState
+                title="Links could not load"
+                description={query.error instanceof Error ? query.error.message : undefined}
+                action={<Button onClick={() => void query.refetch()}>Retry</Button>}
+              />
+            </div>
           ) : query.data && query.data.items.length > 0 ? (
-            <div className="space-y-4">
+            <>
               <UrlListTable
                 items={query.data.items}
                 deletingId={remove.isPending ? (remove.variables ?? null) : null}
@@ -126,53 +145,46 @@ export function UrlManager() {
                 onDelete={(item) => void handleDelete(item)}
                 onToggle={(item) => void handleToggle(item)}
               />
-              <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                <span>
-                  Page {filters.page} of {totalPages}
-                </span>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={filters.page <= 1}
-                    onClick={() =>
-                      setFilters((current) => ({ ...current, page: current.page - 1 }))
-                    }
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={filters.page >= totalPages}
-                    onClick={() =>
-                      setFilters((current) => ({ ...current, page: current.page + 1 }))
-                    }
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            </div>
+              <UrlPagination
+                page={filters.page}
+                totalPages={totalPages}
+                onPrevious={() =>
+                  setFilters((current) => ({ ...current, page: current.page - 1 }))
+                }
+                onNext={() =>
+                  setFilters((current) => ({ ...current, page: current.page + 1 }))
+                }
+              />
+            </>
           ) : (
-            <EmptyState
-              icon={Link2}
-              title="No short links found"
-              description={
-                filters.q
-                  ? "No links match the current search."
-                  : "Create your first alias using the form above."
-              }
-            />
-          )}
-          {query.isFetching && !query.isPending ? (
-            <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              Refreshing
+            <div className="p-4">
+              <EmptyState
+                icon={Link2}
+                title={isSearching ? "No links match your search" : "No short links yet"}
+                description={
+                  isSearching
+                    ? `Nothing matched “${filters.q}”. Try a different keyword.`
+                    : "Create your first short link to start tracking clicks."
+                }
+                action={
+                  isSearching ? (
+                    <Button variant="outline" onClick={handleClearSearch}>
+                      Clear search
+                    </Button>
+                  ) : (
+                    <Button onClick={() => setCreateOpen(true)}>
+                      <Plus className="h-4 w-4" aria-hidden="true" />
+                      Create Link
+                    </Button>
+                  )
+                }
+              />
             </div>
-          ) : null}
+          )}
         </CardContent>
       </Card>
-    </div>
+
+      <UrlCreateDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+    </>
   );
 }

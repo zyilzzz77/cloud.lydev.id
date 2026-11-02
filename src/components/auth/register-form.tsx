@@ -1,206 +1,188 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
-import { toast } from "sonner";
+import { Loader2, UserPlus } from "lucide-react";
+import {
+  AuthCard,
+  AuthDivider,
+  AuthError,
+  GoogleSignInButton,
+  PasswordVisibilityToggle,
+  authInputClass,
+  authLinkClass,
+  primaryButtonClass,
+} from "@/components/auth/auth-shell";
+import { PasswordLengthHint, PasswordMatchHint } from "@/components/auth/register-hints";
+import { TermsAgreement } from "@/components/auth/terms-agreement";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useRegisterForm } from "@/hooks/use-register-form";
+import { cn } from "@/lib/utils";
+
+const LABEL_CLASS = "text-sm font-medium text-slate-700 dark:text-slate-300";
 
 export function RegisterForm() {
-  const router = useRouter();
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [pending, setPending] = useState(false);
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setPending(true);
-    setError(null);
-    setFieldErrors({});
-
-    if (password !== confirmPassword) {
-      const message = "Passwords do not match.";
-      setFieldErrors({ confirmPassword: message });
-      setError(message);
-      toast.error(message);
-      setPending(false);
-      return;
-    }
-
-    try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password, confirmPassword }),
-      });
-
-      const payload = (await response.json()) as {
-        data?: { verificationEmailSent?: boolean };
-        error?: { message?: string; details?: { path?: string; message?: string }[] };
-      };
-
-      if (!response.ok) {
-        const details = payload.error?.details ?? [];
-        const nextFieldErrors: Record<string, string> = {};
-
-        for (const detail of details) {
-          if (detail.path && detail.message) {
-            nextFieldErrors[detail.path] = detail.message;
-          }
-        }
-
-        setFieldErrors(nextFieldErrors);
-
-        // The API sends a generic message for validation failures, so prefer the
-        // first field-level issue to tell the user what actually went wrong.
-        const message =
-          details[0]?.message ?? payload.error?.message ?? "Could not create the account.";
-        setError(message);
-        toast.error(message);
-        return;
-      }
-
-      if (payload.data?.verificationEmailSent) {
-        toast.success("Account created. Check your inbox for the 6-digit code.");
-      } else {
-        toast.warning("Account created, but the code could not be emailed. Tap resend.");
-      }
-
-      router.push(`/verify-email?email=${encodeURIComponent(email.trim())}`);
-      router.refresh();
-    } catch {
-      const message = "Network error. Try again.";
-      setError(message);
-      toast.error(message);
-    } finally {
-      setPending(false);
-    }
-  }
+  const {
+    username,
+    setUsername,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    confirmPassword,
+    setConfirmPassword,
+    showPassword,
+    setShowPassword,
+    showConfirmPassword,
+    setShowConfirmPassword,
+    error,
+    fieldErrors,
+    pending,
+    passwordIsLongEnough,
+    passwordsMatch,
+    handleSubmit,
+  } = useRegisterForm();
 
   return (
-    <Card>
-      <CardHeader className="space-y-1">
-        <CardTitle as="h1" className="text-xl">
-          Create an account
-        </CardTitle>
-        <CardDescription>Start hosting assets, links, and files in one place.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form className="space-y-4" onSubmit={handleSubmit} noValidate>
-          <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
-            <Input
-              id="username"
-              name="username"
-              autoComplete="username"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              placeholder="yourname"
-              required
-            />
-            {fieldErrors.username ? (
-              <p className="text-xs text-red-400">{fieldErrors.username}</p>
-            ) : null}
-          </div>
+    <AuthCard
+      title="Create an account"
+      description="Start hosting assets, links, and files in one place."
+      footer={
+        <>
+          Already have an account?{" "}
+          <Link href="/login" className={authLinkClass}>
+            Sign in
+          </Link>
+        </>
+      }
+    >
+      <GoogleSignInButton />
+      <AuthDivider />
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="you@example.com"
-              required
-            />
-            {fieldErrors.email ? (
-              <p className="text-xs text-red-400">{fieldErrors.email}</p>
-            ) : null}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="new-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className="pr-10"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((visible) => !visible)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" aria-hidden="true" />
-                ) : (
-                  <Eye className="h-4 w-4" aria-hidden="true" />
-                )}
-              </button>
-            </div>
-            {fieldErrors.password ? (
-              <p className="text-xs text-red-400">{fieldErrors.password}</p>
-            ) : (
-              <p className="text-xs text-muted-foreground">At least 10 characters.</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm password</Label>
-            <div className="relative">
-              <Input
-                id="confirmPassword"
-                name="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
-                autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                className="pr-10"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword((visible) => !visible)}
-                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-4 w-4" aria-hidden="true" />
-                ) : (
-                  <Eye className="h-4 w-4" aria-hidden="true" />
-                )}
-              </button>
-            </div>
-            {fieldErrors.confirmPassword ? (
-              <p className="text-xs text-red-400">{fieldErrors.confirmPassword}</p>
-            ) : null}
-          </div>
-
-          {error ? (
-            <p role="alert" className="text-sm text-red-400">
-              {error}
-            </p>
+      <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+        <div className="space-y-2">
+          <Label htmlFor="username" className={LABEL_CLASS}>
+            Username
+          </Label>
+          <Input
+            id="username"
+            name="username"
+            autoComplete="username"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            placeholder="yourname"
+            className={authInputClass}
+            aria-invalid={Boolean(fieldErrors.username)}
+            required
+          />
+          {fieldErrors.username ? (
+            <p className="text-xs text-red-600 dark:text-red-400">{fieldErrors.username}</p>
           ) : null}
+        </div>
 
-          <Button type="submit" className="w-full" disabled={pending}>
+        <div className="space-y-2">
+          <Label htmlFor="email" className={LABEL_CLASS}>
+            Email
+          </Label>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="you@example.com"
+            className={authInputClass}
+            aria-invalid={Boolean(fieldErrors.email)}
+            required
+          />
+          {fieldErrors.email ? (
+            <p className="text-xs text-red-600 dark:text-red-400">{fieldErrors.email}</p>
+          ) : null}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="password" className={LABEL_CLASS}>
+            Password
+          </Label>
+          <div className="relative">
+            <Input
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="••••••••"
+              className={cn(authInputClass, "pr-11")}
+              aria-invalid={Boolean(fieldErrors.password)}
+              aria-describedby={fieldErrors.password ? "password-error" : "password-hint"}
+              required
+            />
+            <PasswordVisibilityToggle
+              visible={showPassword}
+              onToggle={() => setShowPassword((visible) => !visible)}
+            />
+          </div>
+
+          {fieldErrors.password ? (
+            <p id="password-error" className="text-xs text-red-600 dark:text-red-400">
+              {fieldErrors.password}
+            </p>
+          ) : (
+            <PasswordLengthHint id="password-hint" met={passwordIsLongEnough} />
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="confirmPassword" className={LABEL_CLASS}>
+            Confirm password
+          </Label>
+          <div className="relative">
+            <Input
+              id="confirmPassword"
+              name="confirmPassword"
+              type={showConfirmPassword ? "text" : "password"}
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              placeholder="••••••••"
+              className={cn(authInputClass, "pr-11")}
+              aria-invalid={Boolean(fieldErrors.confirmPassword)}
+              aria-describedby={
+                fieldErrors.confirmPassword
+                  ? "confirm-password-error"
+                  : confirmPassword.length > 0
+                    ? "confirm-password-hint"
+                    : undefined
+              }
+              required
+            />
+            <PasswordVisibilityToggle
+              visible={showConfirmPassword}
+              onToggle={() => setShowConfirmPassword((visible) => !visible)}
+            />
+          </div>
+
+          {fieldErrors.confirmPassword ? (
+            <p id="confirm-password-error" className="text-xs text-red-600 dark:text-red-400">
+              {fieldErrors.confirmPassword}
+            </p>
+          ) : confirmPassword.length > 0 ? (
+            <PasswordMatchHint id="confirm-password-hint" matches={passwordsMatch} />
+          ) : null}
+        </div>
+
+        {error ? <AuthError message={error} /> : null}
+
+        <div className="space-y-3">
+          <Button
+            type="submit"
+            className={primaryButtonClass}
+            disabled={pending}
+            aria-busy={pending}
+          >
             {pending ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
             ) : (
@@ -208,15 +190,10 @@ export function RegisterForm() {
             )}
             {pending ? "Creating account" : "Create account"}
           </Button>
-        </form>
 
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Link href="/login" className="font-medium text-primary hover:underline">
-            Sign in
-          </Link>
-        </p>
-      </CardContent>
-    </Card>
+          <TermsAgreement />
+        </div>
+      </form>
+    </AuthCard>
   );
 }

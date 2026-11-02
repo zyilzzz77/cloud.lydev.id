@@ -35,6 +35,11 @@ export function getHostname(host: string | null): string {
   return (host ?? "").split(":")[0]?.toLowerCase() ?? "";
 }
 
+/** Display helper: "https://uri.lydev.id/abc" -> "uri.lydev.id/abc". */
+export function stripProtocol(url: string): string {
+  return url.replace(/^https?:\/\//i, "");
+}
+
 export function buildCdnUrl(fileKey: string): string {
   return joinUrl(CDN_BASE, fileKey);
 }

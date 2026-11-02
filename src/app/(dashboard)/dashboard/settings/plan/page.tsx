@@ -152,10 +152,16 @@ export default async function PlanSettingsPage() {
         </Card>
       ) : null}
 
-      <BoostPacksSection disabled={Boolean(overview.pendingTopUp) || Boolean(pending)} />
+      <BoostPacksSection />
 
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-foreground">Available plans</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-sm font-medium text-foreground">Available plans</h2>
+          <Badge variant="outline" className="gap-1 text-[10px] uppercase tracking-wider">
+            <Clock className="h-3 w-3" aria-hidden="true" />
+            Coming soon
+          </Badge>
+        </div>
         <div className="grid gap-4 md:grid-cols-3">
           {PLAN_ORDER.map((id) => {
             const plan = PLANS[id];
@@ -180,10 +186,7 @@ export default async function PlanSettingsPage() {
                       Request pending
                     </Button>
                   ) : (
-                    <PlanUpgradeButton
-                      plan={plan.id === "starter" ? "starter" : "pro"}
-                      planName={plan.name}
-                    />
+                    <PlanUpgradeButton planName={plan.name} />
                   )
                 }
               />
