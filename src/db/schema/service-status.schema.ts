@@ -5,6 +5,9 @@ export const serviceStatus = pgTable("service_status", {
   serviceId: varchar("service_id", { length: 32 }).primaryKey(),
   hostname: varchar("hostname", { length: 255 }).notNull(),
   status: varchar("status", { length: 16 }).notNull(),
+  /** HTTP status code of the last probe; null when it never produced a response. */
+  statusCode: integer("status_code"),
+  /** Error message for a failed probe; null when the host answered. */
   detail: text("detail"),
   latencyMs: integer("latency_ms"),
   checkedAt: timestamp("checked_at", { withTimezone: true }).notNull().defaultNow(),

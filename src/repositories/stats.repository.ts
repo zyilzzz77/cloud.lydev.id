@@ -169,7 +169,14 @@ function activityUnion(userId: string) {
     inner join short_urls s on s.id = e.short_url_id
     where s.user_id = ${userId}
     union all
-    select id::text, 'status'::text, hostname,
+    select id::text, 'status'::text,
+           case service_id
+             when 'app' then 'Website'
+             when 'cdn' then 'CDN'
+             when 'short' then 'Short links'
+             when 'download' then 'File downloads'
+             else hostname
+           end,
            initcap(previous_status) || ' → ' || initcap(new_status), created_at
     from service_status_events
   `;

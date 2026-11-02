@@ -8,6 +8,7 @@ export interface ServiceStatusRow {
   serviceId: string;
   hostname: string;
   status: string;
+  statusCode: number | null;
   detail: string | null;
   latencyMs: number | null;
   checkedAt: Date;
@@ -23,6 +24,7 @@ export interface UpsertServiceStatusInput {
   serviceId: string;
   hostname: string;
   status: ServiceHealth;
+  statusCode: number | null;
   detail: string | null;
   latencyMs: number | null;
   checkedAt: Date;
@@ -41,13 +43,14 @@ export async function upsertServiceStatus(
 
   const rows = await db.execute(sql`
     insert into service_status as s
-      (service_id, hostname, status, detail, latency_ms, checked_at, status_changed_at)
+      (service_id, hostname, status, status_code, detail, latency_ms, checked_at, status_changed_at)
     values
-      (${input.serviceId}, ${input.hostname}, ${input.status}, ${input.detail},
+      (${input.serviceId}, ${input.hostname}, ${input.status}, ${input.statusCode}, ${input.detail},
        ${input.latencyMs}, ${checkedAt}::timestamptz, ${checkedAt}::timestamptz)
     on conflict (service_id) do update set
       hostname = excluded.hostname,
       status = excluded.status,
+      status_code = excluded.status_code,
       detail = excluded.detail,
       latency_ms = excluded.latency_ms,
       checked_at = excluded.checked_at,

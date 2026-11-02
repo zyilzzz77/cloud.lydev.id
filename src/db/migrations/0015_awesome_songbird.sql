@@ -1,0 +1,1 @@
+ALTER TABLE "service_status" ADD COLUMN "status_code" integer;

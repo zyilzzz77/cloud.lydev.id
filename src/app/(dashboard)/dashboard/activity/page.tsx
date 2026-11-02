@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ActivityAutoRefresh } from "@/components/dashboard/activity-auto-refresh";
 import { ActivityTable } from "@/components/dashboard/activity-table";
 import { StatusSummary } from "@/components/dashboard/status-summary";
 import { PageHeader } from "@/components/shared/page-header";
@@ -61,6 +62,7 @@ export default async function ActivityPage({
         description="Every upload, short link, click, download, and status change in one timeline."
       />
 
+      <ActivityAutoRefresh />
       <StatusSummary summary={monitoring} />
 
       <Card>

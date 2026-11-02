@@ -73,6 +73,8 @@ function StatusRow({ service }: { service: MonitoredService }) {
           className="text-[11px] text-muted-foreground"
           title={service.checkedAt ? formatDate(service.checkedAt) : undefined}
         >
+          {service.latencyMs !== null ? service.latencyMs + "ms" : "no response"}
+          {" · "}
           {service.checkedAt ? relativeTime(service.checkedAt) : "never checked"}
           {service.stale && service.checkedAt ? " · stale" : ""}
         </span>

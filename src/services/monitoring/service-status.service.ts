@@ -2,6 +2,7 @@ import "server-only";
 import { MONITORING } from "@/lib/constants";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
+import { deriveHealth } from "@/lib/status-health";
 import {
   insertServiceStatusEvent,
   listServiceStatusRows,
@@ -18,6 +19,7 @@ interface ServiceDefinition {
 
 interface CheckResult {
   status: ServiceHealth;
+  statusCode: number | null;
   detail: string | null;
   latencyMs: number | null;
 }
@@ -89,47 +91,40 @@ async function checkService(service: ServiceDefinition): Promise<CheckResult> {
     });
 
     const latencyMs = Date.now() - startedAt;
+    const statusCode = response.status;
+    const health = deriveHealth({ statusCode, latencyMs });
 
-    if (service.id !== "app") {
-      // These hosts are served at the edge and expose no application health
-      // endpoint. A reachable answer is the only signal available, so a 4xx
-      // still means the host answered; a 5xx means it could not serve.
-      return {
-        status: response.status >= 500 ? "down" : "operational",
-        detail: "HTTP " + response.status,
-        latencyMs,
-      };
+    // The app publishes its own verdict; a reachable but unhappy instance is
+    // degraded even when the request itself was fast enough.
+    if (service.id === "app" && health === "operational") {
+      const payload = (await response.json().catch(() => null)) as
+        | { data?: { status?: string } }
+        | null;
+      const reported = payload?.data?.status;
+
+      if (reported && reported !== "ok") {
+        return {
+          status: "degraded",
+          statusCode,
+          detail: "Health endpoint reports " + reported,
+          latencyMs,
+        };
+      }
     }
 
-    if (response.status === 503) {
-      // The app answered and reported itself unhealthy.
-      return { status: "degraded", detail: "HTTP 503", latencyMs };
-    }
-
-    if (response.status >= 500) {
-      // Gateway and origin errors mean the site is not being served.
-      return { status: "down", detail: "HTTP " + response.status, latencyMs };
-    }
-
-    if (!response.ok) {
-      return { status: "degraded", detail: "HTTP " + response.status, latencyMs };
-    }
-
-    const payload = (await response.json().catch(() => null)) as
-      | { data?: { status?: string } }
-      | null;
-
-    if (payload?.data?.status === "ok") {
-      return { status: "operational", detail: "HTTP 200", latencyMs };
-    }
-
-    if (payload?.data?.status === "degraded") {
-      return { status: "degraded", detail: "Health endpoint reports degraded", latencyMs };
-    }
-
-    return { status: "degraded", detail: "Unexpected health payload", latencyMs };
+    return {
+      status: health,
+      statusCode,
+      detail: health === "operational" ? null : "HTTP " + statusCode,
+      latencyMs,
+    };
   } catch (error) {
-    return { status: "down", detail: describeError(error), latencyMs: null };
+    return {
+      status: "down",
+      statusCode: null,
+      detail: describeError(error),
+      latencyMs: null,
+    };
   }
 }
 
@@ -146,6 +141,7 @@ function toService(
       name: definition.name,
       hostname,
       status: "unknown",
+      statusCode: null,
       detail: "Not checked yet",
       latencyMs: null,
       checkedAt: null,
@@ -158,6 +154,7 @@ function toService(
     name: definition.name,
     hostname,
     status: row.status as ServiceHealth,
+    statusCode: row.statusCode,
     detail: row.detail,
     latencyMs: row.latencyMs,
     checkedAt: row.checkedAt.toISOString(),
@@ -212,6 +209,7 @@ export async function getMonitoringSummary(): Promise<MonitoringSummary> {
             service,
             result: {
               status: "unknown" as const,
+              statusCode: null,
               detail: "Health checks could not reach any host",
               latencyMs: null,
             },
@@ -227,6 +225,7 @@ export async function getMonitoringSummary(): Promise<MonitoringSummary> {
           serviceId: service.id,
           hostname,
           status: result.status,
+          statusCode: result.statusCode,
           detail: result.detail,
           latencyMs: result.latencyMs,
           checkedAt,
@@ -248,6 +247,7 @@ export async function getMonitoringSummary(): Promise<MonitoringSummary> {
           serviceId: service.id,
           hostname,
           status: result.status,
+          statusCode: result.statusCode,
           detail: result.detail,
           latencyMs: result.latencyMs,
           checkedAt,
@@ -268,5 +268,6 @@ export async function getMonitoringSummary(): Promise<MonitoringSummary> {
     .filter((value): value is string => value !== null)
     .sort();
 
-  return { services: resolved, checkedAt: checkedTimes[0] ?? null };
+  // The card reads "Last checked ...", so report the newest probe, not the oldest.
+  return { services: resolved, checkedAt: checkedTimes.at(-1) ?? null };
 }

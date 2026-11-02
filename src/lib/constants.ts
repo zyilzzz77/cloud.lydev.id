@@ -37,7 +37,9 @@ export const MONITORING = {
   /** Re-run health checks at most this often; older snapshots are refreshed on read. */
   refreshIntervalMs: 60_000,
   /** A single check may not take longer than this. */
-  timeoutMs: 3_000,
+  timeoutMs: 5_000,
+  /** A reachable response slower than this is degraded, not operational. */
+  degradedLatencyMs: 1_000,
   /** Snapshots older than this are shown as stale. */
   staleAfterMs: 5 * 60_000,
 } as const;
