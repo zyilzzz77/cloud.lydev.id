@@ -102,11 +102,13 @@ async function checkService(service: ServiceDefinition): Promise<CheckResult> {
         | null;
       const reported = payload?.data?.status;
 
-      if (reported && reported !== "ok") {
+      if (reported !== "ok") {
         return {
           status: "degraded",
           statusCode,
-          detail: "Health endpoint reports " + reported,
+          detail: reported
+            ? "Health endpoint reports " + reported
+            : "Unexpected health payload",
           latencyMs,
         };
       }
